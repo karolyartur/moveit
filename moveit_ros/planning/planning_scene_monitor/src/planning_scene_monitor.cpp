@@ -42,6 +42,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <moveit_ros_planning/PlanningSceneMonitorDynamicReconfigureConfig.h>
 #include <tf_conversions/tf_eigen.h>
+#include <tf/transform_broadcaster.h>
 #include <moveit/profiler/profiler.h>
 
 #include <memory>
@@ -321,7 +322,39 @@ void planning_scene_monitor::PlanningSceneMonitor::startPublishingPlanningScene(
     ROS_INFO_NAMED(LOGNAME, "Publishing maintained planning scene on '%s'", planning_scene_topic.c_str());
     monitorDiffs(true);
     publish_planning_scene_.reset(new boost::thread(boost::bind(&PlanningSceneMonitor::scenePublishingThread, this)));
+    publish_tf_.reset(new boost::thread(boost::bind(&PlanningSceneMonitor::tfPublishingThread, this)));
   }
+}
+
+void planning_scene_monitor::PlanningSceneMonitor::tfPublishingThread()
+{
+  // TEMPORARY: Publish all frames
+  ROS_INFO_NAMED(LOGNAME, "Started tf publishing thread ...");
+  tf::TransformBroadcaster tf_broadcaster_;
+  do
+  {
+    ros::Rate rate(publish_planning_scene_frequency_);
+    
+    ROS_INFO("Publishing frames");
+    std::vector<const robot_state::AttachedBody*> ab;
+    scene_->getCurrentState().getAttachedBodies(ab);
+    // for (AttachedBodyShapeHandles::const_iterator it = attached_body_shape_handles_.begin();
+    //     it != attached_body_shape_handles_.end(); ++it)
+    for (std::size_t i = 0; i < ab.size(); ++i)
+    {
+      ROS_INFO("Publishing frames for an AB");
+      for (auto nf_pair : ab[i]->getNamedTransforms())
+      {
+        ROS_INFO_STREAM("Publishing frame" << nf_pair.first);
+        tf::Transform t;
+        tf::transformEigenToTF(nf_pair.second, t);
+        tf_broadcaster_.sendTransform(tf::StampedTransform(t, ros::Time::now(), ab[i]->getAttachedLinkName(), nf_pair.first));
+      }
+    }
+    rate.reset();
+    rate.sleep();
+  }
+  while (true);
 }
 
 void planning_scene_monitor::PlanningSceneMonitor::scenePublishingThread()

@@ -469,6 +469,7 @@ protected:
   // variables for planning scene publishing
   ros::Publisher planning_scene_publisher_;
   std::unique_ptr<boost::thread> publish_planning_scene_;
+  std::unique_ptr<boost::thread> publish_tf_;
   double publish_planning_scene_frequency_;
   SceneUpdateType publish_update_types_;
   SceneUpdateType new_scene_update_;
@@ -513,6 +514,9 @@ private:
 
   // publish planning scene update diffs (runs in its own thread)
   void scenePublishingThread();
+
+  // publish planning tf frames (runs in its own thread)
+  void tfPublishingThread();
 
   // called by current_state_monitor_ when robot state (as monitored on joint state topic) changes
   void onStateUpdate(const sensor_msgs::JointStateConstPtr& joint_state);
