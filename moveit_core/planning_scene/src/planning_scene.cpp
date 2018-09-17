@@ -840,7 +840,7 @@ bool PlanningScene::getCollisionObjectMsg(moveit_msgs::CollisionObject& collisio
     collision_obj.frame_names.push_back(it.first);
     geometry_msgs::Pose p;
     tf::poseEigenToMsg(it.second, p);
-    collision_obj.named_frames.push_back(p);
+    collision_obj.frame_poses.push_back(p);
   }
 
   return true;
@@ -1461,7 +1461,7 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
       return false;
     }
 
-    if (object.object.frame_names.size() != object.object.named_frames.size())
+    if (object.object.frame_names.size() != object.object.frame_poses.size())
     {
       ROS_ERROR_NAMED("planning_scene", "Number of frame names does not match number of frames in collision object "
                                         "message");
@@ -1558,7 +1558,7 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
       if (!object.object.type.db.empty() || !object.object.type.key.empty())
         setObjectType(object.object.id, object.object.type);
 
-      if (object.object.operation == moveit_msgs::CollisionObject::ADD && object.object.named_frames.empty() &&
+      if (object.object.operation == moveit_msgs::CollisionObject::ADD && object.object.frame_poses.empty() &&
           obj_in_world)
       {
         object_to_attach.named_frames_ = obj_in_world->named_frames_;
@@ -1570,9 +1570,9 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
       else  // Populate named frames from message
       {
         Eigen::Affine3d p;
-        for (std::size_t i = 0; i < object.object.named_frames.size(); ++i)
+        for (std::size_t i = 0; i < object.object.frame_poses.size(); ++i)
         {
-          tf::poseMsgToEigen(object.object.named_frames[i], p);
+          tf::poseMsgToEigen(object.object.frame_poses[i], p);
           std::string name = object.object.frame_names[i];
           object_to_attach.named_frames_[name] = p;
         }
@@ -1754,7 +1754,7 @@ bool PlanningScene::processCollisionObjectMsg(const moveit_msgs::CollisionObject
       return false;
     }
 
-    if (object.frame_names.size() != object.named_frames.size())
+    if (object.frame_names.size() != object.frame_poses.size())
     {
       ROS_ERROR_NAMED("planning_scene", "Number of frame names does not match number of frames in collision object "
                                         "message");
@@ -1802,9 +1802,9 @@ bool PlanningScene::processCollisionObjectMsg(const moveit_msgs::CollisionObject
     // Add named frames
     std::map<std::string, Eigen::Affine3d> named_frames;
     Eigen::Affine3d p;
-    for (std::size_t i = 0; i < object.named_frames.size(); ++i)
+    for (std::size_t i = 0; i < object.frame_poses.size(); ++i)
     {
-      tf::poseMsgToEigen(object.named_frames[i], p);
+      tf::poseMsgToEigen(object.frame_poses[i], p);
       std::string name = object.frame_names[i];
       named_frames[name] = t * p;
     }
