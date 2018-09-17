@@ -335,17 +335,12 @@ void planning_scene_monitor::PlanningSceneMonitor::tfPublishingThread()
   {
     ros::Rate rate(publish_planning_scene_frequency_);
     
-    ROS_INFO("Publishing frames");
     std::vector<const robot_state::AttachedBody*> ab;
     scene_->getCurrentState().getAttachedBodies(ab);
-    // for (AttachedBodyShapeHandles::const_iterator it = attached_body_shape_handles_.begin();
-    //     it != attached_body_shape_handles_.end(); ++it)
     for (std::size_t i = 0; i < ab.size(); ++i)
     {
-      ROS_INFO("Publishing frames for an AB");
       for (auto nf_pair : ab[i]->getNamedTransforms())
       {
-        ROS_INFO_STREAM("Publishing frame" << nf_pair.first);
         tf::Transform t;
         tf::transformEigenToTF(nf_pair.second, t);
         tf_broadcaster_.sendTransform(tf::StampedTransform(t, ros::Time::now(), ab[i]->getAttachedLinkName(), nf_pair.first));
