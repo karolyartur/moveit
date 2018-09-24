@@ -278,10 +278,10 @@ public:
 
     moveit_msgs::PlanningScene ps = response.scene;
     collision_detection::AllowedCollisionMatrix acm(response.scene.allowed_collision_matrix);
-    // TODO: Include the child links in each link group.
+    // TODO felixvd: Add option to include the child links in each link group.
     for (auto b : link_group_1)
     {
-      if (!link_group_2.empty())
+      if (link_group_2.empty())
         acm.setEntry(b, allowed_or_disallowed);
       else
         for (auto b2 : link_group_2)
