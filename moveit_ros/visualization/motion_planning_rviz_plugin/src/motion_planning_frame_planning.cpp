@@ -124,13 +124,9 @@ void MotionPlanningFrame::computeCartesianPlan()
 
   // get start and goal points
   std::vector<geometry_msgs::Pose> waypoints;
-  robot_state::RobotState start = *planning_display_->getQueryStartState();
   robot_state::RobotState goal = *planning_display_->getQueryGoalState();
-  geometry_msgs::Pose start_msg;
   geometry_msgs::Pose goal_msg;
-  tf::poseEigenToMsg(start.getGlobalLinkTransform(move_group_->getEndEffectorLink()), start_msg);
   tf::poseEigenToMsg(goal.getGlobalLinkTransform(move_group_->getEndEffectorLink()), goal_msg);
-  waypoints.push_back(start_msg);
   waypoints.push_back(goal_msg);
 
   // setup default params
