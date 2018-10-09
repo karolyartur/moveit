@@ -577,3 +577,10 @@ class MoveGroupCommander(object):
         traj_out = RobotTrajectory()
         traj_out.deserialize(ser_traj_out)
         return traj_out
+
+    def get_named_targets(self):
+        return self._g.get_named_targets()
+
+    def get_named_target_values(self, name):
+        return self._g.get_named_target_values(name)
+    
