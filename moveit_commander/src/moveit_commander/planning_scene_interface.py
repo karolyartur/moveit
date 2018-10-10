@@ -263,3 +263,56 @@ class PlanningSceneInterface(object):
             conversions.msg_from_string(msg, ser_aobjs[key])
             aobjs[key] = msg
         return aobjs
+
+    def allow_collisions(self, object_list_1, object_list_2 = []):
+        """
+        Allows collisions between/for objects or robot links. If object_list_2 is empty, the objects in object_list_1 will be allowed
+        to collide with all objects in the scene (including the robot and environment).
+
+        This function is meant for use cases such as "Allow collision between robot gripper and table".
+        """
+        return self._psi.allow_collisions(object_list_1, object_list_2)
+        # TODO felixvd: Add a C++ binding for two lists.
+    
+    def disallow_collisions(self, object_list_1, object_list_2 = []):
+        """
+        Disallows (enables) collisions between/for objects or robot links. If object_list_2 is empty, the objects in object_list_1 will
+        have collision checking enables for all other objects in the scene (including the robot and environment and
+        grippers that it might be inside of (!)).
+
+        This function is meant for use cases such as "Allow collision between robot gripper and table".
+        """
+        return self._psi.disallow_collisions(object_list_1, object_list_2)
+        # TODO felixvd: Add a C++ binding for two lists.
+    
+    def set_collisions(self, set_to_allow, object_list_1, object_list_2 = []):
+        """
+        Sets the allowed collision matrix between/for objects or robot links. If object_list_2 is empty, the objects in
+        object_list_1 will have their collisions set to allowed/disallowed for all other objects in the scene (including
+        the robot and environment and gripper links they might be in contact with).
+
+        This function is meant for use cases such as "Allow collision between robot gripper and table".
+        """
+        return self._psi.set_collisions(set_to_allow, object_list_1, object_list_2)
+
+
+#   PlanningSceneClass.def("get_known_object_names", &PlanningSceneInterfaceWrapper::getKnownObjectNamesPython);
+#   PlanningSceneClass.def("get_known_object_names_in_roi",
+#                          &PlanningSceneInterfaceWrapper::getKnownObjectNamesInROIPython);
+#   PlanningSceneClass.def("get_object_poses", &PlanningSceneInterfaceWrapper::getObjectPosesPython);
+#   PlanningSceneClass.def("get_objects", &PlanningSceneInterfaceWrapper::getObjectsPython);
+#   PlanningSceneClass.def("get_attached_objects", &PlanningSceneInterfaceWrapper::getAttachedObjectsPython);
+#   PlanningSceneClass.def("apply_planning_scene", &PlanningSceneInterfaceWrapper::applyPlanningScenePython);
+#   PlanningSceneClass.def("apply_collision_object", &PlanningSceneInterfaceWrapper::applyCollisionObjectPython1);
+#   PlanningSceneClass.def("apply_collision_object", &PlanningSceneInterfaceWrapper::applyCollisionObjectPython2);
+#   PlanningSceneClass.def("apply_collision_objects", &PlanningSceneInterfaceWrapper::applyCollisionObjectsPython);
+#   PlanningSceneClass.def("add_collision_objects", &PlanningSceneInterfaceWrapper::addCollisionObjectsPython);
+#   PlanningSceneClass.def("remove_collision_object", &PlanningSceneInterfaceWrapper::removeCollisionObjectsPython);
+#   PlanningSceneClass.def("apply_attached_collision_object", &PlanningSceneInterfaceWrapper::applyAttachedCollisionObjectPython);
+#   PlanningSceneClass.def("apply_attached_collision_objects", &PlanningSceneInterfaceWrapper::applyAttachedCollisionObjectsPython);
+#   PlanningSceneClass.def("allow_collisions", &PlanningSceneInterfaceWrapper::allowCollisionsPython1);
+#   PlanningSceneClass.def("allow_collisions", &PlanningSceneInterfaceWrapper::allowCollisionsPython2);
+#   PlanningSceneClass.def("disallow_collisions", &PlanningSceneInterfaceWrapper::disallowCollisionsPython1);
+#   PlanningSceneClass.def("disallow_collisions", &PlanningSceneInterfaceWrapper::disallowCollisionsPython2);
+#   PlanningSceneClass.def("set_collisions", &PlanningSceneInterfaceWrapper::setCollisionsPython1);
+#   PlanningSceneClass.def("set_collisions", &PlanningSceneInterfaceWrapper::setCollisionsPython2);

@@ -460,6 +460,7 @@ bool PlanningSceneInterface::setCollisions(bool set_to_allow, const std::string&
   std::vector<std::string> link_group_1 = {link_name_1};
   return impl_->setCollisions(set_to_allow, link_group_1, link_group_2);
 }
+// TODO felixvd: Make one for link_name_1, link_name_2.
 
 bool PlanningSceneInterface::setCollisions(bool set_to_allow, const std::vector<std::string>& link_group_1, 
                                       const std::vector<std::string>& link_group_2)
