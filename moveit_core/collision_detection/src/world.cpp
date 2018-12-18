@@ -165,6 +165,7 @@ const Eigen::Isometry3d& World::getTransform(const std::string& object_id) const
         return object.second->named_frame_poses_[object_id];
     }
   }
+  throw std::runtime_error("No transform found for object_id");
 }
 
 std::string World::getObjectOwningFrame(const std::string& frame_name) const

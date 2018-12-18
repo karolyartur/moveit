@@ -845,7 +845,7 @@ bool PlanningScene::getCollisionObjectMsg(moveit_msgs::CollisionObject& collisio
   {
     collision_obj.frame_names.push_back(frame_pair.first);
     geometry_msgs::Pose p;
-    tf::poseEigenToMsg(frame_pair.second, p);
+    p = tf2::toMsg(frame_pair.second);
     collision_obj.named_frame_poses.push_back(p);
   }
 
@@ -1525,7 +1525,7 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
           object_to_attach.shape_poses_ = obj_in_world->shape_poses_;
 
           // Transform shape poses to the link frame
-          const Eigen::Isometry3d& inv_transform = kstate_->getGlobalLinkTransform(link_model).inverse();
+          const Eigen::Isometry3d& inv_transform = robot_state_->getGlobalLinkTransform(link_model).inverse();
           for (std::size_t i = 0; i < object_to_attach.shape_poses_.size(); ++i)
             object_to_attach.shape_poses_[i] = inv_transform * object_to_attach.shape_poses_[i];
         }
@@ -1608,7 +1608,7 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
         Eigen::Isometry3d p;
         for (std::size_t i = 0; i < object.object.named_frame_poses.size(); ++i)
         {
-          tf::poseMsgToEigen(object.object.named_frame_poses[i], p);
+          tf2::fromMsg(object.object.named_frame_poses[i], p);
           std::string name = object.object.frame_names[i];
           object_to_attach.named_frame_poses_[name] = p;
         }
@@ -1638,7 +1638,7 @@ bool PlanningScene::processAttachedCollisionObjectMsg(const moveit_msgs::Attache
       }
 
       // STEP 3: Attach the object to the robot
-      if (object.object.operation == moveit_msgs::CollisionObject::ADD || !kstate_->hasAttachedBody(object.object.id))
+      if (object.object.operation == moveit_msgs::CollisionObject::ADD || !robot_state_->hasAttachedBody(object.object.id))
       {
         if (robot_state_->clearAttachedBody(object_to_attach.id_))
           ROS_DEBUG_NAMED(LOGNAME, "The robot state already had an object named '%s' attached to link '%s'. "
@@ -1845,6 +1845,17 @@ bool PlanningScene::processCollisionObjectAdd(const moveit_msgs::CollisionObject
   }
   if (!object.type.key.empty() || !object.type.db.empty())
     setObjectType(object.id, object.type);
+
+  // Add named frames
+  std::map<std::string, Eigen::Isometry3d> named_frames;
+  Eigen::Isometry3d frame_pose;
+  for (std::size_t i = 0; i < object.named_frame_poses.size(); ++i)
+  {
+    tf2::fromMsg(object.named_frame_poses[i], frame_pose);
+    std::string name = object.frame_names[i];
+    named_frames[name] = object_frame_transform * frame_pose;
+  }
+  world_->setNamedFramesOfObject(object.id, named_frames);
   return true;
 }
 

@@ -137,8 +137,8 @@ void RobotStateVisualization::updateHelper(const robot_state::RobotStateConstPtr
     // TODO(felixvd): Integrate this properly (either by publishing to TF, or frames that can be toggled)
     auto frame_marker = shapes::Sphere(.002);
     rviz::Color red(1.0, 0.0, 0.0);
-    Eigen::Isometry3d3d t = kinematic_state->getGlobalLinkTransform(attached_bodies[i]->getAttachedLinkName());
-    for (std::map<std::string, Eigen::Isometry3d3d>::const_iterator it = attached_bodies[i]->getNamedTransforms().begin();
+    Eigen::Isometry3d t = kinematic_state->getGlobalLinkTransform(attached_bodies[i]->getAttachedLinkName());
+    for (std::map<std::string, Eigen::Isometry3d>::const_iterator it = attached_bodies[i]->getNamedTransforms().begin();
          it != attached_bodies[i]->getNamedTransforms().end(); it++)
     {
       render_shapes_->renderShape(robot_.getVisualNode(), &frame_marker, t * it->second, octree_voxel_render_mode_,

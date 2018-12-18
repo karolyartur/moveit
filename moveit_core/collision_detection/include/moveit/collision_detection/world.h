@@ -149,7 +149,7 @@ public:
   /** \brief Check if a frame or object with name object_id exists in the collision world*/
   bool knowsTransform(const std::string& object_id) const;
 
-  /** \brief Get the transform to a frame or object with name object_id*/
+  /** \brief Get the transform to a frame or object with name object_id. If object_id does not exist, this function throws a std::runtime_error.*/
   const Eigen::Isometry3d& getTransform(const std::string& object_id) const;
 
   /** \brief Get the object id that owns the named frame with name object_id*/

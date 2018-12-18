@@ -41,6 +41,8 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <moveit/move_group/capability_names.h>
 
+static const std::string LOGNAME = "constraint_validation_service";
+
 move_group::MoveGroupConstraintValidationService::MoveGroupConstraintValidationService()
   : MoveGroupCapability("ConstraintValidationService")
 {

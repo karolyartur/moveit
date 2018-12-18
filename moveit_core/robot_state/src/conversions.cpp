@@ -222,7 +222,7 @@ static void _attachedBodyToMsg(const AttachedBody& attached_body, moveit_msgs::A
   {
     aco.object.frame_names.push_back(frame_pair.first);
     geometry_msgs::Pose pose;
-    tf::poseEigenToMsg(frame_pair.second, pose);
+    pose = tf2::toMsg(frame_pair.second);
     aco.object.named_frame_poses.push_back(pose);
   }
 }
@@ -297,7 +297,7 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
         for (std::size_t i = 0; i < aco.object.named_frame_poses.size(); ++i)
         {
           Eigen::Isometry3d p;
-          tf::poseMsgToEigen(aco.object.named_frame_poses[i], p);
+          tf2::fromMsg(aco.object.named_frame_poses[i], p);
           std::string name = aco.object.frame_names[i];
           named_frame_poses[name] = p;
         }

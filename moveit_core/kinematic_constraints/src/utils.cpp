@@ -37,6 +37,8 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <geometric_shapes/solid_primitive_dims.h>
 
+static const std::string LOGNAME = "kinematic_constraints";
+
 moveit_msgs::Constraints kinematic_constraints::mergeConstraints(const moveit_msgs::Constraints& first,
                                                                  const moveit_msgs::Constraints& second)
 {
