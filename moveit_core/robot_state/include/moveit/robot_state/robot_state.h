@@ -152,6 +152,11 @@ public:
     return robot_model_->getVariableNames();
   }
 
+  bool hasLinkModel(const std::string& link) const
+  {
+    return robot_model_->hasLinkModel(link);
+  }
+
   /** \brief Get the model of a particular link */
   const LinkModel* getLinkModel(const std::string& link) const
   {
@@ -1585,6 +1590,8 @@ as the new values that correspond to the group */
    * @param attach_trans The desired transform between this link and the attached body
    * @param touch_links The set of links that the attached body is allowed to touch
    * @param link_name The link to attach to
+   * @param detach_posture The posture of the gripper when placing the object
+   * @param named_frame_poses Transforms to points of interest on the object (can be used as end effector link)
    *
    * This only adds the given body to this RobotState
    * instance.  It does not change anything about other
@@ -1593,10 +1600,12 @@ as the new values that correspond to the group */
    * from a planning_scene::PlanningScene), you will likely need to remove the
    * corresponding object from that world to avoid having collisions
    * detected against it. */
-  void attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
-                  const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
-                  const std::string& link_name,
-                  const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory());
+  void attachBody(
+      const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
+      const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
+      const std::string& link_name,
+      const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
+      const std::map<std::string, Eigen::Isometry3d>& named_frame_poses = std::map<std::string, Eigen::Isometry3d>());
 
   /** @brief Add an attached body to a link
    * @param id The string id associated with the attached body
@@ -1604,6 +1613,8 @@ as the new values that correspond to the group */
    * @param attach_trans The desired transform between this link and the attached body
    * @param touch_links The set of links that the attached body is allowed to touch
    * @param link_name The link to attach to
+   * @param detach_posture The posture of the gripper when placing the object
+   * @param named_frame_poses Transforms to points of interest on the object (can be used as end effector link)
    *
    * This only adds the given body to this RobotState
    * instance.  It does not change anything about other
@@ -1612,13 +1623,15 @@ as the new values that correspond to the group */
    * from a planning_scene::PlanningScene), you will likely need to remove the
    * corresponding object from that world to avoid having collisions
    * detected against it. */
-  void attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
-                  const EigenSTL::vector_Isometry3d& attach_trans, const std::vector<std::string>& touch_links,
-                  const std::string& link_name,
-                  const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory())
+  void
+  attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
+             const EigenSTL::vector_Isometry3d& attach_trans, const std::vector<std::string>& touch_links,
+             const std::string& link_name,
+             const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
+             const std::map<std::string, Eigen::Isometry3d>& named_frame_poses = std::map<std::string, Eigen::Isometry3d>())
   {
     std::set<std::string> touch_links_set(touch_links.begin(), touch_links.end());
-    attachBody(id, shapes, attach_trans, touch_links_set, link_name, detach_posture);
+    attachBody(id, shapes, attach_trans, touch_links_set, link_name, detach_posture, named_frame_poses);
   }
 
   /** \brief Get all bodies attached to the model corresponding to this state */

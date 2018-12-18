@@ -59,6 +59,7 @@
 #include <moveit_msgs/GraspPlanning.h>
 #include <moveit_msgs/GetPlannerParams.h>
 #include <moveit_msgs/SetPlannerParams.h>
+#include <moveit_msgs/GetConstraintValidity.h>
 
 #include <std_msgs/String.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -166,6 +167,8 @@ public:
         node_handle_.serviceClient<moveit_msgs::GetPlannerParams>(move_group::GET_PLANNER_PARAMS_SERVICE_NAME);
     set_params_service_ =
         node_handle_.serviceClient<moveit_msgs::SetPlannerParams>(move_group::SET_PLANNER_PARAMS_SERVICE_NAME);
+    validate_constraints_service_ =
+        node_handle_.serviceClient<moveit_msgs::GetConstraintValidity>(move_group::CONSTRAINT_VALIDITY_SERVICE_NAME);
 
     cartesian_path_service_ =
         node_handle_.serviceClient<moveit_msgs::GetCartesianPath>(move_group::CARTESIAN_PATH_SERVICE_NAME);
@@ -1058,6 +1061,8 @@ public:
           if (active_target_ == POSITION)
             c.orientation_constraints.clear();
           request.goal_constraints[i] = kinematic_constraints::mergeConstraints(request.goal_constraints[i], c);
+          // This changes the link_names from AttachedBody objects to valid link_names on the robot
+          validateConstraints(request.goal_constraints[i]);
         }
       }
     }
@@ -1065,9 +1070,18 @@ public:
       ROS_ERROR_NAMED("move_group_interface", "Unable to construct MotionPlanRequest representation");
 
     if (path_constraints_)
+    {
       request.path_constraints = *path_constraints_;
+      validateConstraints(request.path_constraints);
+    }
     if (trajectory_constraints_)
+    {
       request.trajectory_constraints = *trajectory_constraints_;
+      for (auto constraint : request.trajectory_constraints.constraints)
+      {
+        validateConstraints(constraint);
+      }
+    }
   }
 
   void constructGoal(moveit_msgs::MoveGroupGoal& goal)
@@ -1145,6 +1159,22 @@ public:
   void clearTrajectoryConstraints()
   {
     trajectory_constraints_.reset();
+  }
+
+  bool validateConstraints(moveit_msgs::Constraints& constraints)
+  {
+    moveit_msgs::GetConstraintValidity::Request req;
+    req.constraints = constraints;
+    moveit_msgs::GetConstraintValidity::Response res;
+    if (validate_constraints_service_.call(req, res))
+    {
+      if (res.valid)
+      {
+        constraints = res.constraints;
+        return true;
+      }
+    }
+    return false;
   }
 
   std::vector<std::string> getKnownConstraints() const
@@ -1266,6 +1296,7 @@ private:
   ros::ServiceClient query_service_;
   ros::ServiceClient get_params_service_;
   ros::ServiceClient set_params_service_;
+  ros::ServiceClient validate_constraints_service_;
   ros::ServiceClient cartesian_path_service_;
   ros::ServiceClient plan_grasps_service_;
   std::unique_ptr<moveit_warehouse::ConstraintsStorage> constraints_storage_;

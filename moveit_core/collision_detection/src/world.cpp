@@ -61,7 +61,7 @@ inline void World::addToObjectInternal(const ObjectPtr& obj, const shapes::Shape
   obj->shape_poses_.push_back(pose);
 }
 
-void World::addToObject(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
+void World::addToObject(const std::string& object_id, const std::vector<shapes::ShapeConstPtr>& shapes,
                         const EigenSTL::vector_Isometry3d& poses)
 {
   if (shapes.size() != poses.size())
@@ -76,10 +76,10 @@ void World::addToObject(const std::string& id, const std::vector<shapes::ShapeCo
 
   int action = ADD_SHAPE;
 
-  ObjectPtr& obj = objects_[id];
+  ObjectPtr& obj = objects_[object_id];
   if (!obj)
   {
-    obj.reset(new Object(id));
+    obj.reset(new Object(object_id));
     action |= CREATE;
   }
 
@@ -91,14 +91,14 @@ void World::addToObject(const std::string& id, const std::vector<shapes::ShapeCo
   notify(obj, Action(action));
 }
 
-void World::addToObject(const std::string& id, const shapes::ShapeConstPtr& shape, const Eigen::Isometry3d& pose)
+void World::addToObject(const std::string& object_id, const shapes::ShapeConstPtr& shape, const Eigen::Isometry3d& pose)
 {
   int action = ADD_SHAPE;
 
-  ObjectPtr& obj = objects_[id];
+  ObjectPtr& obj = objects_[object_id];
   if (!obj)
   {
-    obj.reset(new Object(id));
+    obj.reset(new Object(object_id));
     action |= CREATE;
   }
 
@@ -110,15 +110,15 @@ void World::addToObject(const std::string& id, const shapes::ShapeConstPtr& shap
 
 std::vector<std::string> World::getObjectIds() const
 {
-  std::vector<std::string> id;
+  std::vector<std::string> object_id;
   for (const auto& object : objects_)
-    id.push_back(object.first);
-  return id;
+    object_id.push_back(object.first);
+  return object_id;
 }
 
-World::ObjectConstPtr World::getObject(const std::string& id) const
+World::ObjectConstPtr World::getObject(const std::string& object_id) const
 {
-  auto it = objects_.find(id);
+  auto it = objects_.find(object_id);
   if (it == objects_.end())
     return ObjectConstPtr();
   else
@@ -131,14 +131,62 @@ void World::ensureUnique(ObjectPtr& obj)
     obj.reset(new Object(*obj));
 }
 
-bool World::hasObject(const std::string& id) const
+bool World::hasObject(const std::string& object_id) const
 {
-  return objects_.find(id) != objects_.end();
+  return objects_.find(object_id) != objects_.end();
 }
 
-bool World::moveShapeInObject(const std::string& id, const shapes::ShapeConstPtr& shape, const Eigen::Isometry3d& pose)
+bool World::knowsTransform(const std::string& object_id) const
 {
-  auto it = objects_.find(id);
+  // Check object names first
+  if (objects_.find(object_id) != objects_.end())
+    return true;
+  else  // Then objects' named frames
+  {
+    for (const auto& object : objects_)
+    {
+      if (object.second->named_frame_poses_.find(object_id) != object.second->named_frame_poses_.end())
+        return true;
+    }
+  }
+  return false;
+}
+
+const Eigen::Isometry3d& World::getTransform(const std::string& object_id) const
+{
+  auto it = objects_.find(object_id);
+  if (it != objects_.end())
+    return it->second->shape_poses_[0];
+  else  // Find within named frames
+  {
+    for (const auto& object : objects_)
+    {
+      if (object.second->named_frame_poses_.find(object_id) != object.second->named_frame_poses_.end())
+        return object.second->named_frame_poses_[object_id];
+    }
+  }
+}
+
+std::string World::getObjectOwningFrame(const std::string& frame_name) const
+{
+  // If it is an object's name, return the object
+  auto it = objects_.find(frame_name);
+  if (it != objects_.end())
+    return it->second->id_;
+
+  // Return the object owning the frame
+  for (const auto& object : objects_)
+  {
+    if (object.second->named_frame_poses_.find(frame_name) != object.second->named_frame_poses_.end())
+      return object.second->id_;
+  }
+  return "";
+}
+
+bool World::moveShapeInObject(const std::string& object_id, const shapes::ShapeConstPtr& shape,
+                              const Eigen::Isometry3d& pose)
+{
+  auto it = objects_.find(object_id);
   if (it != objects_.end())
   {
     unsigned int n = it->second->shapes_.size();
@@ -155,9 +203,9 @@ bool World::moveShapeInObject(const std::string& id, const shapes::ShapeConstPtr
   return false;
 }
 
-bool World::moveObject(const std::string& id, const Eigen::Isometry3d& transform)
+bool World::moveObject(const std::string& object_id, const Eigen::Isometry3d& transform)
 {
-  auto it = objects_.find(id);
+  auto it = objects_.find(object_id);
   if (it == objects_.end())
     return false;
   if (transform.isApprox(Eigen::Isometry3d::Identity()))
@@ -171,9 +219,21 @@ bool World::moveObject(const std::string& id, const Eigen::Isometry3d& transform
   return true;
 }
 
-bool World::removeShapeFromObject(const std::string& id, const shapes::ShapeConstPtr& shape)
+bool World::replaceShapesInObject(const std::string& object_id, const std::vector<shapes::ShapeConstPtr>& shapes,
+                                  const EigenSTL::vector_Isometry3d& poses)
 {
-  auto it = objects_.find(id);
+  auto it = objects_.find(object_id);
+  if (it == objects_.end())
+    return false;
+  it->second->shapes_.clear();
+  it->second->shape_poses_.clear();
+  addToObject(object_id, shapes, poses);
+  return true;
+}
+
+bool World::removeShapeFromObject(const std::string& object_id, const shapes::ShapeConstPtr& shape)
+{
+  auto it = objects_.find(object_id);
   if (it != objects_.end())
   {
     unsigned int n = it->second->shapes_.size();
@@ -199,9 +259,9 @@ bool World::removeShapeFromObject(const std::string& id, const shapes::ShapeCons
   return false;
 }
 
-bool World::removeObject(const std::string& id)
+bool World::removeObject(const std::string& object_id)
 {
-  auto it = objects_.find(id);
+  auto it = objects_.find(object_id);
   if (it != objects_.end())
   {
     notify(it->second, DESTROY);
@@ -215,6 +275,18 @@ void World::clearObjects()
 {
   notifyAll(DESTROY);
   objects_.clear();
+}
+
+bool World::setNamedFramesOfObject(const std::string& object_id,
+                                   const std::map<std::string, Eigen::Isometry3d>& named_frame_poses)
+{
+  auto obj_pair = objects_.find(object_id);
+  if (obj_pair == objects_.end())
+  {
+    return false;
+  }
+  obj_pair->second->named_frame_poses_ = named_frame_poses;
+  return true;
 }
 
 World::ObserverHandle World::addObserver(const ObserverCallbackFn& callback)
