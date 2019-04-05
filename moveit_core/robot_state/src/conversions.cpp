@@ -217,13 +217,13 @@ static void _attachedBodyToMsg(const AttachedBody& attached_body, moveit_msgs::A
     }
   }
   aco.object.frame_names.clear();
-  aco.object.frame_poses.clear();
+  aco.object.named_frame_poses.clear();
   for (auto it : attached_body.getNamedTransforms())
   {
     aco.object.frame_names.push_back(it.first);
     geometry_msgs::Pose p;
     tf::poseEigenToMsg(it.second, p);
-    aco.object.frame_poses.push_back(p);
+    aco.object.named_frame_poses.push_back(p);
   }
 }
 
@@ -294,10 +294,10 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
         }
 
         std::map<std::string, Eigen::Affine3d> named_frames;
-        for (std::size_t i = 0; i < aco.object.frame_poses.size(); ++i)
+        for (std::size_t i = 0; i < aco.object.named_frame_poses.size(); ++i)
         {
           Eigen::Affine3d p;
-          tf::poseMsgToEigen(aco.object.frame_poses[i], p);
+          tf::poseMsgToEigen(aco.object.named_frame_poses[i], p);
           std::string name = aco.object.frame_names[i];
           named_frames[name] = p;
         }
