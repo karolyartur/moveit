@@ -160,7 +160,7 @@ static QString decideStatusText(const collision_detection::CollisionWorld::Objec
 {
   QString status_text = "'" + QString::fromStdString(obj->id_) + "' is a collision object with ";
   if (obj->shapes_.empty())
-    status_text += "no geometry";
+    status_text += "no geometry.\n";
   else
   {
     std::vector<QString> shape_names;
@@ -174,6 +174,17 @@ static QString decideStatusText(const collision_detection::CollisionWorld::Objec
       for (const QString& shape_name : shape_names)
         status_text += " " + shape_name;
     }
+    status_text += ".";
+  }
+  if (obj->named_frame_poses_.size() > 0)
+  {
+    status_text += "\nIt has the named frames '";
+    for (auto frame : obj->named_frame_poses_)
+    {
+      status_text += QString::fromStdString(frame.first) + "', '";
+    }
+    status_text.chop(3);
+    status_text += ".";
   }
   return status_text;
 }
@@ -181,7 +192,17 @@ static QString decideStatusText(const collision_detection::CollisionWorld::Objec
 static QString decideStatusText(const robot_state::AttachedBody* attached_body)
 {
   QString status_text = "'" + QString::fromStdString(attached_body->getName()) + "' is attached to '" +
-                        QString::fromStdString(attached_body->getAttachedLinkName()) + "'";
+                        QString::fromStdString(attached_body->getAttachedLinkName()) + "'.";
+  if (attached_body->getNamedTransforms().size() > 0)
+  {
+    status_text += "\nIt has the named frames '";
+    for (auto ab : attached_body->getNamedTransforms())
+    {
+      status_text += QString::fromStdString(ab.first) + "', '";
+    }
+    status_text.chop(3);
+    status_text += ".";
+  }
   return status_text;
 }
 
@@ -781,7 +802,7 @@ void MotionPlanningFrame::renameCollisionObject(QListWidgetItem* item)
       known_collision_objects_[item->type()].first = item_text;
       robot_state::AttachedBody* new_ab = new robot_state::AttachedBody(
           ab->getAttachedLink(), known_collision_objects_[item->type()].first, ab->getShapes(),
-          ab->getFixedTransforms(), ab->getTouchLinks(), ab->getDetachPosture());
+          ab->getFixedTransforms(), ab->getTouchLinks(), ab->getDetachPosture(), ab->getNamedTransforms());
       cs.clearAttachedBody(ab->getName());
       cs.attachBody(new_ab);
     }

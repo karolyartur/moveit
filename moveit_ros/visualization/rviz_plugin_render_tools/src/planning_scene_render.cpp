@@ -104,6 +104,16 @@ void PlanningSceneRender::renderPlanningScene(const planning_scene::PlanningScen
     for (std::size_t j = 0; j < object->shapes_.size(); ++j)
       render_shapes_->renderShape(planning_scene_geometry_node_, object->shapes_[j].get(), object->shape_poses_[j],
                                   octree_voxel_rendering, octree_color_mode, color, alpha);
+
+    // Insert the named frames as red spheres of radius 2 mm
+    // TODO(felixvd): Integrate this properly (via visualization toggle of AttachedBodies, most likely)
+    auto s = shapes::Sphere(.002);
+    rviz::Color red(1.0, 0.0, 0.0);
+    for (auto named_frame_pair : object->named_frame_poses_)
+    {
+      render_shapes_->renderShape(planning_scene_geometry_node_, &s, named_frame_pair.second, octree_voxel_rendering,
+                                  octree_color_mode, red, 1.0);
+    }
   }
 }
 }  // namespace moveit_rviz_plugin

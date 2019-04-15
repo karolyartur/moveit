@@ -132,6 +132,18 @@ void RobotStateVisualization::updateHelper(const robot_state::RobotStateConstPtr
       render_shapes_->renderShape(robot_.getCollisionNode(), ab_shapes[j].get(), ab_t[j], octree_voxel_render_mode_,
                                   octree_voxel_color_mode_, rcolor, alpha);
     }
+
+    // Insert the named frames as red spheres of radius 2 mm
+    // TODO(felixvd): Integrate this properly (via visualization toggle of AttachedBodies, most likely)
+    auto frame_marker = shapes::Sphere(.002);
+    rviz::Color red(1.0, 0.0, 0.0);
+    Eigen::Isometry3d t = kinematic_state->getGlobalLinkTransform(attached_body->getAttachedLinkName());
+    for (std::map<std::string, Eigen::Isometry3d>::const_iterator it = attached_body->getNamedTransforms().begin();
+         it != attached_body->getNamedTransforms().end(); it++)
+    {
+      render_shapes_->renderShape(robot_.getVisualNode(), &frame_marker, t * it->second, octree_voxel_render_mode_,
+                                  octree_voxel_color_mode_, red, 1.0);
+    }
   }
   robot_.setVisualVisible(visual_visible_);
   robot_.setCollisionVisible(collision_visible_);

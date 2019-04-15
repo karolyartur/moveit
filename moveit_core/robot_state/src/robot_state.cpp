@@ -169,7 +169,8 @@ void RobotState::copyFrom(const RobotState& other)
   clearAttachedBodies();
   for (const std::pair<const std::string, AttachedBody*>& it : other.attached_body_map_)
     attachBody(it.second->getName(), it.second->getShapes(), it.second->getFixedTransforms(),
-               it.second->getTouchLinks(), it.second->getAttachedLinkName(), it.second->getDetachPosture());
+               it.second->getTouchLinks(), it.second->getAttachedLinkName(), it.second->getDetachPosture(),
+               it.second->getNamedTransforms());
 }
 
 bool RobotState::checkJointTransforms(const JointModel* joint) const
@@ -887,14 +888,15 @@ void RobotState::attachBody(AttachedBody* attached_body)
 
 void RobotState::attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
                             const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
-                            const std::string& link, const trajectory_msgs::JointTrajectory& detach_posture)
+                            const std::string& link, const trajectory_msgs::JointTrajectory& detach_posture,
+                            const std::map<std::string, Eigen::Isometry3d>& named_frame_poses)
 {
   const LinkModel* l = robot_model_->getLinkModel(link);
-  AttachedBody* ab = new AttachedBody(l, id, shapes, attach_trans, touch_links, detach_posture);
-  attached_body_map_[id] = ab;
-  ab->computeTransform(getGlobalLinkTransform(l));
+  AttachedBody* body = new AttachedBody(l, id, shapes, attach_trans, touch_links, detach_posture, named_frame_poses);
+  attached_body_map_[id] = body;
+  body->computeTransform(getGlobalLinkTransform(l));
   if (attached_body_update_callback_)
-    attached_body_update_callback_(ab, true);
+    attached_body_update_callback_(body, true);
 }
 
 void RobotState::getAttachedBodies(std::vector<const AttachedBody*>& attached_bodies) const
@@ -1005,24 +1007,40 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& id) co
     const LinkModel* lm = robot_model_->getLinkModel(id);
     return global_link_transforms_[lm->getLinkIndex()];
   }
+
+  // Check named frames of the AttachedBody objects
+  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name id
+  {
+    if (body.second->hasNamedTransform(id))
+      return body.second->getNamedTransform(id);
+  }
+  // TODO: Is this efficient? Probably not, should be a find() + iterator comparison instead of two loops.
+
+  // Check names of the AttachedBody objects themselves
   std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(id);
   if (jt == attached_body_map_.end())
   {
-    ROS_ERROR_NAMED(LOGNAME, "Transform from frame '%s' to frame '%s' is not known "
-                             "('%s' should be a link name or an attached body id).",
+    ROS_ERROR_NAMED(LOGNAME,
+                    "Transform from frame '%s' to frame '%s' is not known "
+                    "('%s' should be a link name, an attached body id, or the id of an attached body's named frame).",
                     id.c_str(), robot_model_->getModelFrame().c_str(), id.c_str());
     return IDENTITY_TRANSFORM;
   }
+
   const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
+  const std::map<std::string, Eigen::Isometry3d>& nf = jt->second->getNamedTransforms();
+  if (!nf.empty())
+    ROS_ERROR_NAMED(LOGNAME, "The AttachedBody has named frames. Use their names directly to access them.");
   if (tf.empty())
   {
-    ROS_ERROR_NAMED(LOGNAME, "Attached body '%s' has no geometry associated to it. No transform to return.",
+    ROS_ERROR_NAMED(LOGNAME, "'%s' is the name of an AttachedBody, but it has no geometry associated to it. No "
+                                   "transform to return.",
                     id.c_str());
     return IDENTITY_TRANSFORM;
   }
   if (tf.size() > 1)
     ROS_DEBUG_NAMED(LOGNAME, "There are multiple geometries associated to attached body '%s'. "
-                             "Returning the transform for the first one.",
+                                   "Returning the transform for the first one.",
                     id.c_str());
   return tf[0];
 }
@@ -1033,6 +1051,14 @@ bool RobotState::knowsFrameTransform(const std::string& id) const
     return knowsFrameTransform(id.substr(1));
   if (robot_model_->hasLinkModel(id))
     return true;
+
+  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name id
+  {
+    if (body.second->hasNamedTransform(id))
+      return true;
+  }
+
+  // Check if an AttachedBody with name id exists
   std::map<std::string, AttachedBody*>::const_iterator it = attached_body_map_.find(id);
   return it != attached_body_map_.end() && !it->second->getGlobalCollisionBodyTransforms().empty();
 }
@@ -1530,15 +1556,15 @@ bool RobotState::setFromIK(const JointModelGroup* jmg, const EigenSTL::vector_Is
       {
         if (hasAttachedBody(pose_frame))
         {
-          const AttachedBody* ab = getAttachedBody(pose_frame);
-          const EigenSTL::vector_Isometry3d& ab_trans = ab->getFixedTransforms();
+          const AttachedBody* body = getAttachedBody(pose_frame);
+          const EigenSTL::vector_Isometry3d& ab_trans = body->getFixedTransforms();
           if (ab_trans.size() != 1)
           {
             ROS_ERROR_NAMED(LOGNAME, "Cannot use an attached body "
-                                     "with multiple geometries as a reference frame.");
+                                           "with multiple geometries as a reference frame.");
             return false;
           }
-          pose_frame = ab->getAttachedLinkName();
+          pose_frame = body->getAttachedLinkName();
           pose = pose * ab_trans[0].inverse();
         }
         if (pose_frame != solver_tip_frame)
@@ -1573,7 +1599,8 @@ bool RobotState::setFromIK(const JointModelGroup* jmg, const EigenSTL::vector_Is
     // Make sure one of the tip frames worked
     if (!found_valid_frame)
     {
-      ROS_ERROR_NAMED(LOGNAME, "Cannot compute IK for query %zu pose reference frame '%s'", i, pose_frame.c_str());
+      ROS_ERROR_NAMED(LOGNAME, "Cannot compute IK for query %zu pose reference frame '%s'", i,
+                      pose_frame.c_str());
       // Debug available tip frames
       std::stringstream ss;
       for (solver_tip_id = 0; solver_tip_id < solver_tip_frames.size(); ++solver_tip_id)
@@ -1742,14 +1769,14 @@ bool RobotState::setFromIKSubgroups(const JointModelGroup* jmg, const EigenSTL::
     {
       if (hasAttachedBody(pose_frame))
       {
-        const AttachedBody* ab = getAttachedBody(pose_frame);
-        const EigenSTL::vector_Isometry3d& ab_trans = ab->getFixedTransforms();
+        const AttachedBody* body = getAttachedBody(pose_frame);
+        const EigenSTL::vector_Isometry3d& ab_trans = body->getFixedTransforms();
         if (ab_trans.size() != 1)
         {
           ROS_ERROR_NAMED(LOGNAME, "Cannot use an attached body with multiple geometries as a reference frame.");
           return false;
         }
-        pose_frame = ab->getAttachedLinkName();
+        pose_frame = body->getAttachedLinkName();
         pose = pose * ab_trans[0].inverse();
       }
       if (pose_frame != solver_tip_frame)
