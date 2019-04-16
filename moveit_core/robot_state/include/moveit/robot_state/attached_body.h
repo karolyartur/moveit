@@ -112,12 +112,6 @@ public:
   }
 
   /** \brief Get the fixed transform to a named frame on this body (not a transform to a visual or collision shape) */
-  const Eigen::Isometry3d& getFixedTransform(const std::string& frame_name) const
-  {
-    return getNamedTransform(frame_name);
-  }
-
-  /** \brief Get the fixed transform to a named frame on this body (not a transform to a visual or collision shape) */
   const Eigen::Isometry3d& getNamedTransform(const std::string& frame_name) const
   {
     return named_frame_poses_.find(frame_name)->second;
