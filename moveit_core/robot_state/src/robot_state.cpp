@@ -1021,7 +1021,7 @@ const bool RobotState::getFrameTransform(const std::string& frame_id, Eigen::Iso
     return true;
   }
 
-  // Check if frame named frames of the AttachedBody objects
+  // Check if frame is in named frames of the AttachedBody objects
   for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name frame_id
   {
     if (body.second->hasNamedTransform(frame_id))
