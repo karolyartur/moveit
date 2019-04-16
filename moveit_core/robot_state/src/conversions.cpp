@@ -306,8 +306,8 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
         if (!Transforms::sameFrame(aco.object.header.frame_id, aco.link_name))
         {
           Eigen::Isometry3d t0;
-          if (state.knowsFrameTransform(aco.object.header.frame_id))
-            t0 = state.getFrameTransform(aco.object.header.frame_id);
+          if (state.getFrameTransform(aco.object.header.frame_id, t0))
+            ; // t0 is already assigned if the line above returns true
           else if (tf && tf->canTransform(aco.object.header.frame_id))
             t0 = tf->getTransform(aco.object.header.frame_id);
           else

@@ -1965,9 +1965,11 @@ const Eigen::Isometry3d& PlanningScene::getFrameTransform(const robot_state::Rob
     // Recursively call itself without the slash in front of frame name
     // TODO: minor cleanup, but likely getFrameTransform(state, id.substr(1)); can be used, but requires further testing
     return getFrameTransform(id.substr(1));
-  if (state.knowsFrameTransform(id))
-    return state.getFrameTransform(id);
+  Eigen::Isometry3d t;
+  if (state.getFrameTransform(id, t))
+    return t;
 
+  // TODO(felixvd): Make a similar "returnIfExists" function for the collision world, too, to save this double search.
   if (getWorld()->knowsTransform(id))
   {
     if (getWorld()->hasObject(id))
