@@ -987,79 +987,98 @@ bool RobotState::clearAttachedBody(const std::string& id)
     return false;
 }
 
-const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& id)
+const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id)
 {
   updateLinkTransforms();
-  return static_cast<const RobotState*>(this)->getFrameTransform(id);
+  return static_cast<const RobotState*>(this)->getFrameTransform(frame_id);
 }
 
-const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& id) const
+const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id) const
 {
-  if (!id.empty() && id[0] == '/')
-    return getFrameTransform(id.substr(1));
+  Eigen::Isometry3d transform;
+  if (getFrameTransform(frame_id, transform))
+    return static_cast<const Eigen::Isometry3d&>(transform);
+  else
+    return static_cast<const Eigen::Isometry3d&>(Eigen::Isometry3d::Identity());
+}
+
+const bool RobotState::getFrameTransform(const std::string& frame_id, Eigen::Isometry3d& transform) const
+{
+  if (!frame_id.empty() && frame_id[0] == '/')
+    return getFrameTransform(frame_id.substr(1), transform);
   BOOST_VERIFY(checkLinkTransforms());
 
-  static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
-  if (id == robot_model_->getModelFrame())
-    return IDENTITY_TRANSFORM;
-  if (robot_model_->hasLinkModel(id))
+  // Check if frame is in robot links 
+  if (frame_id == robot_model_->getModelFrame())
   {
-    const LinkModel* lm = robot_model_->getLinkModel(id);
-    return global_link_transforms_[lm->getLinkIndex()];
+    transform = Eigen::Isometry3d::Identity();
+    return true;
+  }
+  if (robot_model_->hasLinkModel(frame_id))
+  {
+    const LinkModel* lm = robot_model_->getLinkModel(frame_id);
+    transform = global_link_transforms_[lm->getLinkIndex()];
+    return true;
   }
 
-  // Check named frames of the AttachedBody objects
-  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name id
+  // Check if frame named frames of the AttachedBody objects
+  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name frame_id
   {
-    if (body.second->hasNamedTransform(id))
-      return body.second->getNamedTransform(id);
+    if (body.second->hasNamedTransform(frame_id))
+    {
+      transform = body.second->getNamedTransform(frame_id); 
+      return true;
+    }
   }
-  // TODO: Is this efficient? Probably not, should be a find() + iterator comparison instead of two loops.
+  // TODO(felixvd): Is this efficient? Probably not, should be a find() + iterator comparison instead of two loops.
 
   // Check names of the AttachedBody objects themselves
-  std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(id);
+  std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(frame_id);
   if (jt == attached_body_map_.end())
   {
     ROS_ERROR_NAMED(LOGNAME,
                     "Transform from frame '%s' to frame '%s' is not known "
-                    "('%s' should be a link name, an attached body id, or the id of an attached body's named frame).",
-                    id.c_str(), robot_model_->getModelFrame().c_str(), id.c_str());
-    return IDENTITY_TRANSFORM;
+                    "('%s' should be a link name, an attached body, or the name of an attached body's named frame).",
+                    frame_id.c_str(), robot_model_->getModelFrame().c_str(), frame_id.c_str());
+    return false;
   }
 
   const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
-  const std::map<std::string, Eigen::Isometry3d>& nf = jt->second->getNamedTransforms();
-  if (!nf.empty())
-    ROS_ERROR_NAMED(LOGNAME, "The AttachedBody has named frames. Use their names directly to access them.");
   if (tf.empty())
   {
     ROS_ERROR_NAMED(LOGNAME, "'%s' is the name of an AttachedBody, but it has no geometry associated to it. No "
                                    "transform to return.",
-                    id.c_str());
-    return IDENTITY_TRANSFORM;
+                    frame_id.c_str());
+    return false;
   }
   if (tf.size() > 1)
+  {
     ROS_DEBUG_NAMED(LOGNAME, "There are multiple geometries associated to attached body '%s'. "
                                    "Returning the transform for the first one.",
-                    id.c_str());
-  return tf[0];
+                    frame_id.c_str());
+    transform = tf[0];
+    return true;
+  }
+
+  ROS_ERROR_NAMED(LOGNAME, "getFrameTransform did not find a frame with name %s.", frame_id);
+  return false;
 }
 
-bool RobotState::knowsFrameTransform(const std::string& id) const
+bool RobotState::knowsFrameTransform(const std::string& frame_id) const
 {
-  if (!id.empty() && id[0] == '/')
-    return knowsFrameTransform(id.substr(1));
-  if (robot_model_->hasLinkModel(id))
+  if (!frame_id.empty() && frame_id[0] == '/')
+    return knowsFrameTransform(frame_id.substr(1));
+  if (robot_model_->hasLinkModel(frame_id))
     return true;
 
-  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name id
+  for (auto body : attached_body_map_)  // Check if an AttachedBody has a child frame with name frame_id
   {
-    if (body.second->hasNamedTransform(id))
+    if (body.second->hasNamedTransform(frame_id))
       return true;
   }
 
-  // Check if an AttachedBody with name id exists
-  std::map<std::string, AttachedBody*>::const_iterator it = attached_body_map_.find(id);
+  // Check if an AttachedBody with name frame_id exists
+  std::map<std::string, AttachedBody*>::const_iterator it = attached_body_map_.find(frame_id);
   return it != attached_body_map_.end() && !it->second->getGlobalCollisionBodyTransforms().empty();
 }
 

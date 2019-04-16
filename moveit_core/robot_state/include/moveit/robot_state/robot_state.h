@@ -1646,13 +1646,20 @@ as the new values that correspond to the group */
   }
 
   /** \brief Get the transformation matrix from the model frame to the frame identified by \e id */
-  const Eigen::Isometry3d& getFrameTransform(const std::string& id);
+  const Eigen::Isometry3d& getFrameTransform(const std::string& frame_id);
 
   /** \brief Get the transformation matrix from the model frame to the frame identified by \e id */
-  const Eigen::Isometry3d& getFrameTransform(const std::string& id) const;
+  const Eigen::Isometry3d& getFrameTransform(const std::string& frame_id) const;
 
-  /** \brief Check if a transformation matrix from the model frame to frame \e id is known */
-  bool knowsFrameTransform(const std::string& id) const;
+  /** \brief Get the transformation matrix from the model frame to the frame identified by \e id.
+   * Returns false and leaves transform untouched if frame is unknown.
+   */
+  const bool getFrameTransform(const std::string& frame_id, Eigen::Isometry3d& transform) const;
+
+  /** \brief Check if a transformation matrix from the model frame to frame \e id is known. If 
+   * you plan to retrieve the transform after calling this command, use the command 
+   * getFrameTransform(std::string, Eigen::Isometry3d) instead to avoid two redundant search operations. */
+  bool knowsFrameTransform(const std::string& frame_id) const;
 
   /** @brief Get a MarkerArray that fully describes the robot markers for a given robot.
    *  @param arr The returned marker array
