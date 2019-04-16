@@ -1004,20 +1004,28 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
 
 const bool RobotState::getFrameTransform(const std::string& frame_id, Eigen::Isometry3d& transform) const
 {
+  std::string ignored_output;
+  return getFrameInfo(frame_id, transform, ignored_output);
+}
+
+const bool RobotState::getFrameInfo(const std::string& frame_id, Eigen::Isometry3d& transform, std::string& robot_link) const
+{
   if (!frame_id.empty() && frame_id[0] == '/')
-    return getFrameTransform(frame_id.substr(1), transform);
+    return getFrameInfo(frame_id.substr(1), transform, robot_link);
   BOOST_VERIFY(checkLinkTransforms());
 
   // Check if frame is in robot links 
   if (frame_id == robot_model_->getModelFrame())
   {
     transform = Eigen::Isometry3d::Identity();
+    robot_link = frame_id;
     return true;
   }
   if (robot_model_->hasLinkModel(frame_id))
   {
     const LinkModel* lm = robot_model_->getLinkModel(frame_id);
     transform = global_link_transforms_[lm->getLinkIndex()];
+    robot_link = frame_id;
     return true;
   }
 
@@ -1027,6 +1035,7 @@ const bool RobotState::getFrameTransform(const std::string& frame_id, Eigen::Iso
     if (body.second->hasNamedTransform(frame_id))
     {
       transform = body.second->getNamedTransform(frame_id); 
+      robot_link = body.second->getAttachedLinkName();
       return true;
     }
   }
@@ -1057,6 +1066,7 @@ const bool RobotState::getFrameTransform(const std::string& frame_id, Eigen::Iso
                                    "Returning the transform for the first one.",
                     frame_id.c_str());
     transform = tf[0];
+    robot_link = jt->second->getAttachedLinkName();
     return true;
   }
 

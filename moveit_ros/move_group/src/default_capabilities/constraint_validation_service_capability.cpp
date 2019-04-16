@@ -65,7 +65,7 @@ bool move_group::MoveGroupConstraintValidationService::computeService(moveit_msg
   // that are attached to the robot. The latter are transformed to link_names so the planner can deal with them.
   res.constraints = req.constraints;
   bool valid = true;
-  valid = valid && kinematic_constraints::validatePositionOrientationConstraints(rs, res.constraints);
+  valid = valid && kinematic_constraints::validateConstraintFrames(rs, res.constraints);
 
   res.valid = valid;
   return true;

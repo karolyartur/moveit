@@ -1656,6 +1656,11 @@ as the new values that correspond to the group */
    */
   const bool getFrameTransform(const std::string& frame_id, Eigen::Isometry3d& transform) const;
 
+  /** \brief Get the transformation matrix from the model frame to the frame identified by \e id,
+   * and the robot link that it is attached to. Returns false and leaves transform untouched if frame is unknown.
+   */
+  const bool getFrameInfo(const std::string& frame_id, Eigen::Isometry3d& transform, std::string& robot_link) const;
+
   /** \brief Check if a transformation matrix from the model frame to frame \e id is known. If 
    * you plan to retrieve the transform after calling this command, use the command 
    * getFrameTransform(std::string, Eigen::Isometry3d) instead to avoid two redundant search operations. */
