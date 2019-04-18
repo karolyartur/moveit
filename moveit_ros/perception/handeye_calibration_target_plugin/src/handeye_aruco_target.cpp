@@ -102,31 +102,6 @@ bool HandEyeArucoTarget::setTargetDimension(const double& marker_size, const dou
   }
 }
 
-bool HandEyeArucoTarget::setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg)
-{
-  if (msg)
-  {
-    // Store camera matrix info
-    for (size_t i = 0; i < 3; i++) 
-    {
-      for (size_t j = 0; j < 3; j++) 
-      {
-        camera_matrix_.at<double>(i, j) = msg->K[i*3+j];
-      }
-    }
-
-    // Store camera distortion info
-    for (size_t i = 0; i < 5; i++) 
-    {
-      distor_coeffs_.at<double>(i,0) = msg->D[i];
-    }
-  }
-  else
-  {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "CameraInfo msgs is NULL.");
-  }
-}
-
 bool HandEyeArucoTarget::createTargetImage(cv::Mat& image)
 {
   cv::Size image_size;
@@ -271,4 +246,4 @@ void HandEyeArucoTarget::getTranslationVect(std::vector<double>& t)
     t[i] = tvect_[i];
 }
 
-}; // namespace moveit_handeye_calibration
+} // namespace moveit_handeye_calibration

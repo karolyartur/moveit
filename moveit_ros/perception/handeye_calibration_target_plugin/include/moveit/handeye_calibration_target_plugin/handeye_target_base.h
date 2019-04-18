@@ -47,13 +47,19 @@ class HandEyeTargetBase
 {
 public:
 
+  virtual ~HandEyeTargetBase() = default;
+  HandEyeTargetBase()
+  {
+    camera_matrix_ = cv::Mat::eye(3, 3, CV_64F);
+    distor_coeffs_ = cv::Mat::zeros(5, 1, CV_64F);
+  }
+
   virtual bool initialize() = 0;
 
   virtual bool setTargetIntrinsicParams(const int& markers_x, const int& markers_y, 
                                         const int& marker_size_, const int& separation, 
                                         const int& border_bits, const std::string& dictionary_id) = 0;
 
-  virtual bool setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg) = 0;
 
   virtual bool setTargetDimension(const double& marker_size, const double& marker_seperation) = 0;
 
@@ -65,11 +71,43 @@ public:
 
   virtual geometry_msgs::TransformStamped getPose(std::string& frame_id) = 0;
 
-  virtual ~HandEyeTargetBase() = default;
+  virtual bool setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg)
+  {
+    if (msg)
+    {
+      // Store camera matrix info
+      for (size_t i = 0; i < 3; i++) 
+      {
+        for (size_t j = 0; j < 3; j++) 
+        {
+          camera_matrix_.at<double>(i, j) = msg->K[i*3+j];
+        }
+      }
 
+      // Store camera distortion info
+      for (size_t i = 0; i < 5; i++) 
+      {
+        distor_coeffs_.at<double>(i,0) = msg->D[i];
+      }
+    }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED("handeye_target_base", "CameraInfo msgs is NULL.");
+    }
+  }
+  
 protected:
 
-  HandEyeTargetBase() = default;
+  // 3x3 floating-point camera matrix
+  //     [fx  0 cx]
+  // K = [ 0 fy cy]
+  //     [ 0  0  1]
+  cv::Mat camera_matrix_;
+
+  // Vector of distortion coefficients (k1, k2, t1, t2, k3)
+  // Assume `plumb_bob` model
+  cv::Mat distor_coeffs_;
+
 };
-};  // namespace moveit_handeye_calibration
+}  // namespace moveit_handeye_calibration
 #endif

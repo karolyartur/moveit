@@ -58,8 +58,8 @@ public:
 
   virtual bool initialize() override
   {
-    camera_matrix_ = cv::Mat::eye(3, 3, CV_64F);
-    distor_coeffs_ = cv::Mat::zeros(5, 1, CV_64F);
+    // camera_matrix_ = cv::Mat::eye(3, 3, CV_64F);
+    // distor_coeffs_ = cv::Mat::zeros(5, 1, CV_64F);
 
     dict_map_ = {{"DICT_4X4_250", cv::aruco::DICT_4X4_250}, 
                  {"DICT_5X5_250", cv::aruco::DICT_5X5_250}, 
@@ -73,7 +73,7 @@ public:
                                         const int& marker_size, const int& separation, 
                                         const int& border_bits, const std::string& dictionary_id) override;
 
-  virtual bool setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg) override;
+  // virtual bool setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg) override;
 
   virtual bool setTargetDimension(const double& marker_size, const double& marker_seperation) override;
 
@@ -110,19 +110,10 @@ private:
   double marker_size_real_;         // Printed marker size
   double marker_seperation_real_;   // Printed marker seperation distance
 
-  // 3x3 floating-point camera matrix
-  //     [fx  0 cx]
-  // K = [ 0 fy cy]
-  //     [ 0  0  1]
-  cv::Mat camera_matrix_;
-
-  // Vector of distortion coefficients (k1, k2, t1, t2, k3)
-  cv::Mat distor_coeffs_;
-
   // Rotation and translation of the board w.r.t the camera frame
   cv::Vec3d tvect_, rvect_;
 };
 
-}; // namespace moveit_handeye_calibration
+} // namespace moveit_handeye_calibration
 
 #endif
