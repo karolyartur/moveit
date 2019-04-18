@@ -403,24 +403,32 @@ void TargetTabWidget::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& 
     {
       sensor_msgs::CameraInfoPtr camera_info;
       camera_info.reset(new sensor_msgs::CameraInfo());
-      camera_info->height = 480;
-      camera_info->width = 640;
-      camera_info->distortion_model = "plumb_bob";
-      camera_info->D = {0.0, 0.0, 0.0, 0.0, 0.0};
-      camera_info->K = {618.6002197265625, 0.0, 321.9837646484375,
-                        0.0, 619.1103515625, 241.1459197998047,
-                        0.0, 0.0, 1.0};
-      camera_info->R = {1.0, 0.0, 0.0,
-                        0.0, 1.0, 0.0,
-                        0.0, 0.0, 1.0};
-      camera_info->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
-                        0.0, 619.1103515625, 241.1459197998047, 0.0,
-                        0.0, 0.0, 1.0, 0.0};
+      camera_info->height = msg->height;
+      camera_info->width = msg->width;
+      camera_info->distortion_model = msg->distortion_model;
+      camera_info->D = msg->D;
+      camera_info->K = msg->K;
+      camera_info->R = msg->R;
+      camera_info->P = msg->P;
 
-      target_->setCameraIntrinsicParams(camera_info);
+      // camera_info->height = 480;
+      // camera_info->width = 640;
+      // camera_info->distortion_model = "plumb_bob";
+      // camera_info->D = {0.0, 0.0, 0.0, 0.0, 0.0};
+      // camera_info->K = {618.6002197265625, 0.0, 321.9837646484375,
+      //                   0.0, 619.1103515625, 241.1459197998047,
+      //                   0.0, 0.0, 1.0};
+      // camera_info->R = {1.0, 0.0, 0.0,
+      //                   0.0, 1.0, 0.0,
+      //                   0.0, 0.0, 1.0};
+      // camera_info->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
+      //                   0.0, 619.1103515625, 241.1459197998047, 0.0,
+      //                   0.0, 0.0, 1.0, 0.0};
+
       if (msg->K != camera_info_.K || msg->D != camera_info_.D)
       {
         camera_info_ = *camera_info;
+        target_->setCameraIntrinsicParams(camera_info);
         Q_EMIT cameraInfoChanged(camera_info_);
       }
     }
