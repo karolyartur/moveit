@@ -75,6 +75,8 @@ public:
   {
     if (msg)
     {
+      ROS_DEBUG_STREAM_NAMED("handeye_target_base", "CameraInfo set: " << *msg);
+      
       // Store camera matrix info
       for (size_t i = 0; i < 3; i++) 
       {
@@ -92,7 +94,7 @@ public:
     }
     else
     {
-      ROS_ERROR_STREAM_NAMED("handeye_target_base", "CameraInfo msgs is NULL.");
+      ROS_ERROR_STREAM_NAMED("handeye_target_base", "CameraInfo msg is NULL.");
     }
   }
   

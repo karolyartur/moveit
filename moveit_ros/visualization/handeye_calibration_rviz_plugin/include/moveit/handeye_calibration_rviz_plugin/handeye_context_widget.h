@@ -69,7 +69,8 @@ namespace moveit_rviz_plugin
 enum FRAME_SOURCE
 {
   ROBOT_FRAME = 0,
-  ENVIRONMENT_FRAME = 1
+  CAMERA_FRAME = 1,
+  ENVIRONMENT_FRAME = 2
 };
 
 // **************************************************
@@ -159,7 +160,7 @@ public:
   void loadWidget(const rviz::Config& config);
   void saveWidget(rviz::Config& config);
 
-  void UpdateAllMarkers();
+  void updateAllMarkers();
 
   static shape_msgs::Mesh getCameraFOVMesh(const sensor_msgs::CameraInfo& camera_info, double maxdist);
 
@@ -168,6 +169,11 @@ public:
 
   visualization_msgs::Marker getCameraFOVMarker(const geometry_msgs::Pose& pose, const shape_msgs::Mesh& mesh, 
                                                 rvt::colors color, double alpha, std::string frame_id);
+
+public Q_SLOTS:
+
+  void setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info);
+  // void setOpticalFrame(std::string& frame_id);
 
 private Q_SLOTS:
 

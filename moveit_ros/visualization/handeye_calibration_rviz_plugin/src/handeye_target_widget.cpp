@@ -188,6 +188,9 @@ TargetTabWidget::TargetTabWidget(QWidget* parent)
 
   // Initialize image publisher
   image_pub_ = it_.advertise("/handeye_calibration/target_detection", 1);
+
+  // Initialize camera info dada
+  camera_info_.reset(new sensor_msgs::CameraInfo());
 }
 
 void TargetTabWidget::loadWidget(const rviz::Config& config)
@@ -338,7 +341,6 @@ void TargetTabWidget::fillDictionaryIds(std::string id)
 
 void TargetTabWidget::imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-  ROS_DEBUG_NAMED(LOGNAME, "Got image");
   targetParamsSet();
 
   // Depth image format `16UC1` cannot be converted to `MONO8`
@@ -351,7 +353,7 @@ void TargetTabWidget::imageCallback(const sensor_msgs::ImageConstPtr& msg)
     if (optical_frame_.compare(frame_id))
     {
       optical_frame_ = frame_id;
-      Q_EMIT opticalFrameChanged(optical_frame_);
+      // Q_EMIT opticalFrameChanged(optical_frame_);
     }
   }
   else
@@ -401,34 +403,31 @@ void TargetTabWidget::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& 
   {
     if (msg->height > 0 && msg->width > 0 && !msg->K.empty() && !msg->D.empty())
     {
-      sensor_msgs::CameraInfoPtr camera_info;
-      camera_info.reset(new sensor_msgs::CameraInfo());
-      camera_info->height = msg->height;
-      camera_info->width = msg->width;
-      camera_info->distortion_model = msg->distortion_model;
-      camera_info->D = msg->D;
-      camera_info->K = msg->K;
-      camera_info->R = msg->R;
-      camera_info->P = msg->P;
-
-      // camera_info->height = 480;
-      // camera_info->width = 640;
-      // camera_info->distortion_model = "plumb_bob";
-      // camera_info->D = {0.0, 0.0, 0.0, 0.0, 0.0};
-      // camera_info->K = {618.6002197265625, 0.0, 321.9837646484375,
+      // camera_info_->height = 480;
+      // camera_info_->width = 640;
+      // camera_info_->distortion_model = "plumb_bob";
+      // camera_info_->D = {0.0, 0.0, 0.0, 0.0, 0.0};
+      // camera_info_->K = {618.6002197265625, 0.0, 321.9837646484375,
       //                   0.0, 619.1103515625, 241.1459197998047,
       //                   0.0, 0.0, 1.0};
-      // camera_info->R = {1.0, 0.0, 0.0,
+      // camera_info_->R = {1.0, 0.0, 0.0,
       //                   0.0, 1.0, 0.0,
       //                   0.0, 0.0, 1.0};
-      // camera_info->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
+      // camera_info_->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
       //                   0.0, 619.1103515625, 241.1459197998047, 0.0,
       //                   0.0, 0.0, 1.0, 0.0};
 
-      if (msg->K != camera_info_.K || msg->D != camera_info_.D)
+      if (msg->K != camera_info_->K || msg->D != camera_info_->D)
       {
-        camera_info_ = *camera_info;
-        target_->setCameraIntrinsicParams(camera_info);
+        camera_info_->header = msg->header;
+        camera_info_->height = msg->height;
+        camera_info_->width = msg->width;
+        camera_info_->distortion_model = msg->distortion_model;
+        camera_info_->D = msg->D;
+        camera_info_->K = msg->K;
+        camera_info_->R = msg->R;
+        camera_info_->P = msg->P;
+        target_->setCameraIntrinsicParams(camera_info_);
         Q_EMIT cameraInfoChanged(camera_info_);
       }
     }

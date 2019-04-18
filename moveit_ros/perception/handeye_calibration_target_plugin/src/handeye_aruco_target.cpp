@@ -54,6 +54,14 @@ bool HandEyeArucoTarget::setTargetIntrinsicParams(const int& markers_x, const in
                                                   const int& marker_size, const int& separation, 
                                                   const int& border_bits, const std::string& dictionary_id)
 {
+  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target intrinsic params: " << "\n"
+                                  << "markers_x_ " << std::to_string(markers_x) << "\n"
+                                  << "markers_y_ " << std::to_string(markers_y) << "\n"
+                                  << "marker_size " << std::to_string(marker_size) << "\n"
+                                  << "separation " << std::to_string(separation) << "\n"
+                                  << "border_bits" << std::to_string(border_bits) << "\n"
+                                  << "dictionary_id " << dictionary_id << "\n");
+
   if (markers_x > 0 && markers_y > 0 && marker_size > 0 && separation > 0 && border_bits > 0)
   {
     markers_x_ = markers_x;
@@ -90,6 +98,10 @@ bool HandEyeArucoTarget::setTargetIntrinsicParams(const int& markers_x, const in
 
 bool HandEyeArucoTarget::setTargetDimension(const double& marker_size, const double& marker_seperation)
 {
+  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target real dimensions: " << "\n"
+                                  << "marker_size " << std::to_string(marker_size) << "\n"
+                                  << "marker_seperation " << std::to_string(marker_seperation) << "\n");
+
   if (marker_size > 0 && marker_seperation > 0)
   {
     marker_size_real_ = marker_size;
@@ -131,21 +143,6 @@ bool HandEyeArucoTarget::detectTargetPose(cv::Mat& image)
 {
   try
   {
-
-    ROS_DEBUG_STREAM_NAMED(LOGNAME, "\n" << "markers_x_ " << std::to_string(markers_x_) << "\n"
-                                         << "markers_y_ " << std::to_string(markers_y_) << "\n"
-                                         << "marker_size_real_ " << std::to_string(marker_size_real_) << "\n"
-                                         << "marker_seperation_real_ " << std::to_string(marker_seperation_real_) << "\n"
-                                         << "dictionary " << std::to_string(dict_) << "\n");
-
-    for (size_t i = 0; i < 3; i++) 
-    {
-      for (size_t j = 0; j < 3; j++) 
-      {
-        ROS_DEBUG_NAMED(LOGNAME, "camera_matrix_[%zu, %zu]: %f", i, j, camera_matrix_.at<double>(i, j));
-      }
-    }
-
     // Detect aruco board
     cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(dict_);
     cv::Ptr<cv::aruco::GridBoard> board = cv::aruco::GridBoard::create(markers_x_, markers_y_, 
@@ -180,7 +177,13 @@ bool HandEyeArucoTarget::detectTargetPose(cv::Mat& image)
       ROS_DEBUG_STREAM_NAMED(LOGNAME, "Cannot estimate aruco target pose.");
       return false;
     }
-
+    
+    if (std::log10(std::fabs(rvect_[0])) > 10 || std::log10(std::fabs(rvect_[0])) > 10 || std::log10(std::fabs(rvect_[0])) > 10 ||
+        std::log10(std::fabs(tvect_[0])) > 10 || std::log10(std::fabs(tvect_[0])) > 10 || std::log10(std::fabs(tvect_[0])) > 10)
+    {
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid target pose, please check CameraInfo msg.");
+    }
+    
     cv::Mat imageColor;
     cv::cvtColor(image, imageColor, cv::COLOR_GRAY2RGB);
     // cv::aruco::drawDetectedMarkers(imageColor, corners, ids);

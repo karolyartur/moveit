@@ -35,9 +35,11 @@
 /* Author: Yu Yan */
 
 #include <moveit/handeye_calibration_rviz_plugin/handeye_context_widget.h>
+#include <math.h>
 
 namespace moveit_rviz_plugin
 {
+const std::string LOGNAME = "handeye_context_widget";
 
 void TFFrameNameComboBox::mousePressEvent(QMouseEvent* event)
 {
@@ -53,10 +55,19 @@ void TFFrameNameComboBox::mousePressEvent(QMouseEvent* event)
     for (const std::string& name : names)
     {
       auto it = std::find(robot_links.begin(), robot_links.end(), name);
-      if ((frame_source_ == ROBOT_FRAME) != (it == robot_links.end()))
-      {
-        addItem(QString(name.c_str()));
-      }      
+      size_t index = name.find("camera");
+
+      if (frame_source_ == ROBOT_FRAME)
+        if (it != robot_links.end())
+          addItem(QString(name.c_str()));
+
+      if (frame_source_ == CAMERA_FRAME)
+        if(index != std::string::npos)
+          addItem(QString(name.c_str()));
+      
+      if (frame_source_ == ENVIRONMENT_FRAME)
+        if (it == robot_links.end() && index == std::string::npos)
+          addItem(QString(name.c_str()));
     }
   }
   showPopup();
@@ -188,7 +199,7 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
   QFormLayout* frame_layout = new QFormLayout();
   frame_group->setLayout(frame_layout);
 
-  frames_.insert(std::make_pair("sensor", new TFFrameNameComboBox(ENVIRONMENT_FRAME)));
+  frames_.insert(std::make_pair("sensor", new TFFrameNameComboBox(CAMERA_FRAME)));
   frame_layout->addRow("Sensor Frame:", frames_["sensor"]);
 
   frames_.insert(std::make_pair("object", new TFFrameNameComboBox(ENVIRONMENT_FRAME)));
@@ -251,33 +262,21 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
   }
 
   // Variables initialization
-  camera_info_.reset(new sensor_msgs::CameraInfo());
-  camera_info_->height = 480;
-  camera_info_->width = 640;
-  camera_info_->distortion_model = "plumb_bob";
-  camera_info_->D = {0.0, 0.0, 0.0, 0.0, 0.0};
-  camera_info_->K = {618.6002197265625, 0.0, 321.9837646484375,
-                     0.0, 619.1103515625, 241.1459197998047,
-                     0.0, 0.0, 1.0};
-  camera_info_->R = {1.0, 0.0, 0.0,
-                     0.0, 1.0, 0.0,
-                     0.0, 0.0, 1.0};
-  camera_info_->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
-                     0.0, 619.1103515625, 241.1459197998047, 0.0,
-                     0.0, 0.0, 1.0, 0.0};
-  
   camera_pose_ = Eigen::Isometry3d::Identity();
-  fov_pose_ = Eigen::Quaterniond(0.5, -0.5, 0.5, -0.5);
-  fov_pose_.translate(Eigen::Vector3d(0.0149, 0.0325, 0.0125));
+  fov_pose_ = Eigen::Isometry3d::Identity();
+  // fov_pose_ = Eigen::Quaterniond(0.5, -0.5, 0.5, -0.5);
+  // fov_pose_.translate(Eigen::Vector3d(0.0149, 0.0325, 0.0125));
+
+  camera_info_.reset(new sensor_msgs::CameraInfo());
   
-  visual_tools_.reset(new moveit_visual_tools::MoveItVisualTools("panda_link0"));
+  visual_tools_.reset(new moveit_visual_tools::MoveItVisualTools("world"));
   visual_tools_->enableFrameLocking(true);
   visual_tools_->setAlpha(1.0);
   visual_tools_->setLifetime(0.0);
   visual_tools_->trigger();
 
   tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
-  tf_tools_->publishTransform(camera_pose_, "panda_link0", "camera_link");
+  // tf_tools_->publishTransform(camera_pose_, "panda_link0", "camera_link");
 }
 
 void ContextTabWidget::loadWidget(const rviz::Config& config)
@@ -290,7 +289,7 @@ void ContextTabWidget::saveWidget(rviz::Config& config)
 
 }
 
-void ContextTabWidget::UpdateAllMarkers()
+void ContextTabWidget::updateAllMarkers()
 {
   visual_tools_->deleteAllMarkers();
   tf_tools_->clearAllTransforms();
@@ -331,7 +330,7 @@ void ContextTabWidget::UpdateAllMarkers()
       {
         visual_tools_->setBaseFrame(to_frame.toStdString());
         visual_tools_->setAlpha(fov_alpha_->getValue());
-        visual_tools_->publishMesh(fov_pose_, mesh, rvt::YELLOW);
+        visual_tools_->publishMesh(fov_pose_, mesh, rvt::YELLOW, 1.0, "fov", 1);
         // visualization_msgs::Marker marker = getCameraFOVMarker(fov_pose_, mesh, rvt::YELLOW, fov_alpha_->getValue(), 
         //                                                        to_frame.toStdString());
         // visual_tools_->publishMarker(marker);
@@ -355,18 +354,21 @@ shape_msgs::Mesh ContextTabWidget::getCameraFOVMesh(const sensor_msgs::CameraInf
 
   // Get corners
   mesh.vertices.clear();
-  geometry_msgs::Point vertex;
-  vertex.x = 0; 
-  vertex.y = 0; 
-  vertex.z = 0;
-  mesh.vertices.push_back(vertex);
+  // Add the first corner at origin of the optical frame
+  mesh.vertices.push_back(geometry_msgs::Point());
 
+  // Add the four corners at bottom
   for (const double& x_it : x_cords)
     for (const double& y_it : y_cords)
     {
-      vertex.x = x_it;
-      vertex.y = y_it;
-      vertex.z = max_dist;
+      geometry_msgs::Point vertex;
+      // Check in case camera info is not valid
+      if (std::isfinite(x_it) && std::isfinite(y_it) && std::isfinite(max_dist))
+      {
+        vertex.x = x_it;
+        vertex.y = y_it;
+        vertex.z = max_dist;
+      }
       mesh.vertices.push_back(vertex);
     }
   
@@ -410,37 +412,40 @@ visualization_msgs::Marker ContextTabWidget::getCameraFOVMarker(const geometry_m
   return marker;
 }
 
+void ContextTabWidget::setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info)
+{
+  camera_info_->header = camera_info->header;
+  camera_info_->height = camera_info->height;
+  camera_info_->width = camera_info->width;
+  camera_info_->distortion_model = camera_info->distortion_model;
+  camera_info_->D = camera_info->D;
+  camera_info_->K = camera_info->K;
+  camera_info_->R = camera_info->R;
+  camera_info_->P = camera_info->P;
+  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info set: " << camera_info);
+}
+
 void ContextTabWidget::sensorMountTypeChanged(int index)
 {
   for (std::pair<const std::string, SliderWidget*> dim : guess_pose_)
     dim.second->setValue(0);
 
-  if (index > 0) // eye-in-hand
-  {
-    frames_["eef"]->setEnabled(true);
-    frames_["base"]->setEnabled(false);
-  }
-  else
-  {
-    frames_["eef"]->setEnabled(false);
-    frames_["base"]->setEnabled(true);
-  }
-  UpdateAllMarkers();
+  updateAllMarkers();
 }
 
 void ContextTabWidget::frameNameChanged(int index)
 {
-  UpdateAllMarkers();
+  updateAllMarkers();
 }
 
 void ContextTabWidget::updateCameraPose(double value)
 {
-  UpdateAllMarkers();
+  updateAllMarkers();
 }
 
 void ContextTabWidget::fovOnOffBtnToggled(bool checked)
 {
-  UpdateAllMarkers();
+  updateAllMarkers();
 }
 
 } // namgespace moveit_rviz_plugin

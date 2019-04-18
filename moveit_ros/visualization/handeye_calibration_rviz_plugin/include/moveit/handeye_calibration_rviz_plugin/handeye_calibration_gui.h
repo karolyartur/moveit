@@ -65,6 +65,9 @@ public:
 
 protected Q_SLOTS:
 
+  // Called when camera info topic in target tab is set and topic data received
+  void updateContextCameraInfo(sensor_msgs::CameraInfo& msg);
+
 private:
 
   // ******************************************************************************************

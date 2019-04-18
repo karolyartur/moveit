@@ -108,6 +108,7 @@ public:
   {
     target_.reset();
     target_plugins_loader_.reset();
+    camera_info_.reset();
   }
 
   void loadWidget(const rviz::Config& config);
@@ -145,7 +146,7 @@ private Q_SLOTS:
 
 Q_SIGNALS:
 
-  void cameraInfoChanged(sensor_msgs::CameraInfo& msg);
+  void cameraInfoChanged(sensor_msgs::CameraInfoPtr& msg);
 
   void opticalFrameChanged(std::string& frame_id);
 
@@ -179,7 +180,7 @@ private:
 
   std::string optical_frame_;
 
-  sensor_msgs::CameraInfo camera_info_;
+  sensor_msgs::CameraInfoPtr camera_info_;
 
   // ************************************************************** 
   // Ros components   
