@@ -171,7 +171,7 @@ void SliderWidget::changeSlider()
 }
 
 ContextTabWidget::ContextTabWidget(QWidget* parent)
-  : QWidget(parent)
+  : QWidget(parent), tf_listener_(tf_buffer_)
 {
   // Context setting tab ----------------------------------------------------
   QHBoxLayout* layout = new QHBoxLayout();
@@ -263,9 +263,8 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
 
   // Variables initialization
   camera_pose_ = Eigen::Isometry3d::Identity();
-  fov_pose_ = Eigen::Isometry3d::Identity();
-  // fov_pose_ = Eigen::Quaterniond(0.5, -0.5, 0.5, -0.5);
-  // fov_pose_.translate(Eigen::Vector3d(0.0149, 0.0325, 0.0125));
+  fov_pose_ = Eigen::Quaterniond(0.5, -0.5, 0.5, -0.5);
+  fov_pose_.translate(Eigen::Vector3d(0.0149, 0.0325, 0.0125));
 
   camera_info_.reset(new sensor_msgs::CameraInfo());
   
@@ -276,17 +275,27 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
   visual_tools_->trigger();
 
   tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
-  // tf_tools_->publishTransform(camera_pose_, "panda_link0", "camera_link");
+
 }
 
 void ContextTabWidget::loadWidget(const rviz::Config& config)
 {
-
+  bool switch_on_off;
+  config.mapGetBool("fov_on_off", &switch_on_off);
 }
 
 void ContextTabWidget::saveWidget(rviz::Config& config)
 {
+  config.mapSetValue("sensor_mount_type", sensor_mount_type_->currentText());
 
+  for (std::pair<const std::string, TFFrameNameComboBox*>& frame : frames_)
+    config.mapSetValue(frame.first.c_str(), frame.second->currentText());
+
+  config.mapSetValue("fov_transparent", fov_alpha_->getValue());
+  config.mapSetValue("fov_on_off", fov_on_off_->isChecked());
+
+  for (std::pair<const std::string, SliderWidget*>& dim : guess_pose_)
+    config.mapSetValue(dim.first.c_str(), dim.second->getValue());
 }
 
 void ContextTabWidget::updateAllMarkers()
@@ -295,13 +304,7 @@ void ContextTabWidget::updateAllMarkers()
   tf_tools_->clearAllTransforms();
   // tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
 
-  // Get camera pose guess
-  camera_pose_.setIdentity();
-  camera_pose_ = visual_tools_->convertFromXYZRPY(guess_pose_["Tx"]->getValue(), guess_pose_["Ty"]->getValue(), 
-                                                  guess_pose_["Tz"]->getValue(), guess_pose_["Rx"]->getValue(), 
-                                                  guess_pose_["Ry"]->getValue(), guess_pose_["Rz"]->getValue(),
-                                                  rviz_visual_tools::XYZ);
-
+  
   QString from_frame = sensor_mount_type_->currentIndex() > 0 ? frames_["eef"]->currentText() : frames_["base"]->currentText();
   if (!from_frame.isEmpty())
   {
@@ -321,6 +324,13 @@ void ContextTabWidget::updateAllMarkers()
     QString to_frame = frames_["sensor"]->currentText();
     if (!to_frame.isEmpty())
     {
+      // Get camera pose guess
+      camera_pose_.setIdentity();
+      camera_pose_ = visual_tools_->convertFromXYZRPY(guess_pose_["Tx"]->getValue(), guess_pose_["Ty"]->getValue(), 
+                                                      guess_pose_["Tz"]->getValue(), guess_pose_["Rx"]->getValue(), 
+                                                      guess_pose_["Ry"]->getValue(), guess_pose_["Rz"]->getValue(),
+                                                      rviz_visual_tools::XYZ);
+
       // Publish new transform from robot base or end-effector to sensor frame
       tf_tools_->publishTransform(camera_pose_, from_frame.toStdString(), to_frame.toStdString());
 
@@ -339,6 +349,29 @@ void ContextTabWidget::updateAllMarkers()
   }
 
   visual_tools_->trigger();
+}
+
+void ContextTabWidget::updateFOVPose()
+{
+  QString sensor_frame = frames_["sensor"]->currentText();
+  geometry_msgs::TransformStamped tf_msg;
+  if (!optical_frame_.empty() && !sensor_frame.isEmpty())
+  {
+    try
+    {
+      // Get FOV pose W.R.T sensor frame
+      tf_msg = tf_buffer_.lookupTransform(sensor_frame.toStdString(), optical_frame_, ros::Time(0));
+      fov_pose_ = tf2::transformToEigen(tf_msg);
+      ROS_DEBUG_STREAM_NAMED(LOGNAME, "FOV pose from '" << sensor_frame.toStdString() 
+                                        << "' to '" << optical_frame_ << "' is:"
+                                        << "\nTranslation:\n" << fov_pose_.translation() 
+                                        << "\nRotation:\n" << fov_pose_.rotation());
+    }
+    catch(tf2::TransformException& e)
+    {
+      ROS_WARN_STREAM("TF exception: " << e.what());
+    }
+  }
 }
 
 shape_msgs::Mesh ContextTabWidget::getCameraFOVMesh(const sensor_msgs::CameraInfo& camera_info, double max_dist)
@@ -422,7 +455,13 @@ void ContextTabWidget::setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info)
   camera_info_->K = camera_info->K;
   camera_info_->R = camera_info->R;
   camera_info_->P = camera_info->P;
-  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info set: " << camera_info);
+  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info changed: " << camera_info);
+}
+
+void ContextTabWidget::setOpticalFrame(std::string& frame_id)
+{
+  optical_frame_ = frame_id;
+  updateFOVPose();
 }
 
 void ContextTabWidget::sensorMountTypeChanged(int index)
@@ -436,6 +475,7 @@ void ContextTabWidget::sensorMountTypeChanged(int index)
 void ContextTabWidget::frameNameChanged(int index)
 {
   updateAllMarkers();
+  updateFOVPose();
 }
 
 void ContextTabWidget::updateCameraPose(double value)

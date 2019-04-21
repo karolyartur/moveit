@@ -353,7 +353,7 @@ void TargetTabWidget::imageCallback(const sensor_msgs::ImageConstPtr& msg)
     if (optical_frame_.compare(frame_id))
     {
       optical_frame_ = frame_id;
-      // Q_EMIT opticalFrameChanged(optical_frame_);
+      Q_EMIT opticalFrameChanged(optical_frame_);
     }
   }
   else

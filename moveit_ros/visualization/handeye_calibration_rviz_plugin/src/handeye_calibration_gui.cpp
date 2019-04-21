@@ -62,6 +62,8 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
   tab_context_ = new ContextTabWidget();
   connect(tab_target_, SIGNAL(cameraInfoChanged(sensor_msgs::CameraInfoPtr&)), 
           tab_context_, SLOT(setCameraInfo(sensor_msgs::CameraInfoPtr&)));
+  connect(tab_target_, SIGNAL(opticalFrameChanged(std::string&)), 
+          tab_context_, SLOT(setOpticalFrame(std::string&)));
   tab_calibrate_ = new ControlTabWidget();
 
   tabs->addTab(tab_target_,"Target");
@@ -92,11 +94,6 @@ void HandEyeCalibrationGui::load( const rviz::Config& config )
   tab_calibrate_->loadWidget(config);
 
   ROS_INFO_STREAM("handeye calibration gui loaded.");
-}
-
-void HandEyeCalibrationGui::updateContextCameraInfo(sensor_msgs::CameraInfo& msg)
-{
-  ROS_INFO_STREAM("camera info changed");
 }
 
 } // namespace moveit_rviz_plugin

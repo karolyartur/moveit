@@ -51,6 +51,7 @@
 // ros
 #include <shape_msgs/Mesh.h>
 #include <rviz/frame_manager.h>
+#include <tf2_eigen/tf2_eigen.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <rviz_visual_tools/tf_visual_tools.h>
 #include <rviz_visual_tools/rviz_visual_tools.h>
@@ -162,6 +163,8 @@ public:
 
   void updateAllMarkers();
 
+  void updateFOVPose();
+
   static shape_msgs::Mesh getCameraFOVMesh(const sensor_msgs::CameraInfo& camera_info, double maxdist);
 
   visualization_msgs::Marker getCameraFOVMarker(const Eigen::Isometry3d& pose, const shape_msgs::Mesh& mesh, 
@@ -173,7 +176,7 @@ public:
 public Q_SLOTS:
 
   void setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info);
-  // void setOpticalFrame(std::string& frame_id);
+  void setOpticalFrame(std::string& frame_id);
 
 private Q_SLOTS:
 
@@ -221,6 +224,8 @@ private:
   // Transform from camera to robot base or end-effector
   Eigen::Isometry3d camera_pose_;
 
+  std::string optical_frame_;
+
   // Transform from camera to fov
   Eigen::Isometry3d fov_pose_;
 
@@ -231,6 +236,9 @@ private:
   moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
 
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
 
 }; 
 
