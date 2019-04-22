@@ -160,6 +160,7 @@ public:
 
   void loadWidget(const rviz::Config& config);
   void saveWidget(rviz::Config& config);
+  void setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub);
 
   void updateAllMarkers();
 
@@ -181,10 +182,10 @@ public Q_SLOTS:
 private Q_SLOTS:
 
   // Called when the sensor_mount_type_ changed
-  void sensorMountTypeChanged(int index);
+  void updateSensorMountType(int index);
 
   // Called when the TFFrameNameComboBox changed
-  void frameNameChanged(int index);
+  void updateFrameName(int index);
 
   // Called when the slider of initial camera pose guess changed
   void updateCameraPose(double value);
@@ -195,6 +196,8 @@ private Q_SLOTS:
 Q_SIGNALS:
 
   void sensorMountTypeChanged(QString sensor_mount_type);
+
+  void frameNameChanged(std::map<std::string, std::string> names);
 
 private:
 
@@ -212,7 +215,7 @@ private:
   QRadioButton* fov_on_off_;
   SliderWidget* fov_alpha_;
 
-  // Initial camera pose area
+  // Initial camera pose
   std::map<std::string, SliderWidget*> guess_pose_;
 
   // ************************************************************** 

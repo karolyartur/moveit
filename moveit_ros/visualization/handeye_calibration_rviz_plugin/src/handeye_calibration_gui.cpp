@@ -59,16 +59,24 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
   // Tab menu ------------------------------------------------------------
   QTabWidget *tabs = new QTabWidget(this);
   tab_target_ = new TargetTabWidget();
+  
+  tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
   tab_context_ = new ContextTabWidget();
+  tab_context_->setTFTool(tf_tools_);
   connect(tab_target_, SIGNAL(cameraInfoChanged(sensor_msgs::CameraInfoPtr&)), 
           tab_context_, SLOT(setCameraInfo(sensor_msgs::CameraInfoPtr&)));
   connect(tab_target_, SIGNAL(opticalFrameChanged(std::string&)), 
           tab_context_, SLOT(setOpticalFrame(std::string&)));
-  tab_calibrate_ = new ControlTabWidget();
+  tab_control_ = new ControlTabWidget();
+  tab_control_->setTFTool(tf_tools_);
+  connect(tab_context_, SIGNAL(sensorMountTypeChanged(QString)), 
+          tab_control_, SLOT(UpdateSensorMountType(QString)));
+  connect(tab_context_, SIGNAL(frameNameChanged(std::map<std::string, std::string>)),
+          tab_control_, SLOT(updateFrameNames(std::map<std::string, std::string>)));
 
   tabs->addTab(tab_target_,"Target");
   tabs->addTab(tab_context_,"Context");
-  tabs->addTab(tab_calibrate_,"Calibrate");
+  tabs->addTab(tab_control_,"Calibrate");
   layout->addWidget(tabs);
 
   ROS_INFO_STREAM("handeye calibration gui created.");
@@ -80,7 +88,7 @@ void HandEyeCalibrationGui::save( rviz::Config config ) const
 {
   tab_target_->saveWidget(config);
   tab_context_->saveWidget(config);
-  tab_calibrate_->saveWidget(config);
+  tab_control_->saveWidget(config);
   rviz::Panel::save(config);
 }
 
@@ -91,7 +99,7 @@ void HandEyeCalibrationGui::load( const rviz::Config& config )
 
   tab_target_->loadWidget(config);
   tab_context_->loadWidget(config);
-  tab_calibrate_->loadWidget(config);
+  tab_control_->loadWidget(config);
 
   ROS_INFO_STREAM("handeye calibration gui loaded.");
 }

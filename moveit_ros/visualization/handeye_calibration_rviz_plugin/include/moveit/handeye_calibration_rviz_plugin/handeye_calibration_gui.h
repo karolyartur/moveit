@@ -40,6 +40,7 @@
 // qt
 
 // ros
+#include <rviz_visual_tools/tf_visual_tools.h>
 
 // local
 #include <moveit/handeye_calibration_rviz_plugin/handeye_target_widget.h>
@@ -71,17 +72,16 @@ private:
   // Qt Components
   // ******************************************************************************************
 
-  // Tab menu
+  // Tab components
   TargetTabWidget* tab_target_;
   ContextTabWidget* tab_context_;
-  ControlTabWidget* tab_calibrate_;
-
-  // Components 
+  ControlTabWidget* tab_control_;
 
   // ******************************************************************************************
   // Ros Components
   // ******************************************************************************************
-  
+
+  rviz_visual_tools::TFVisualToolsPtr tf_tools_;
 };
 
 } // namedist moveit_rviz_plugin

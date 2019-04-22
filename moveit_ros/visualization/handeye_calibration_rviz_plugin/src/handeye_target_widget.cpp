@@ -213,9 +213,9 @@ void TargetTabWidget::loadWidget(const rviz::Config& config)
     if (config.mapGetInt(param.first.c_str(), &param_int)) 
       param.second->setText(std::to_string(param_int).c_str());
   
-  QString topic_name;
   for (const std::pair<const std::string, RosTopicComboBox*>& topic : ros_topics_)
   {
+    QString topic_name;
     if (config.mapGetString(topic.first.c_str(), &topic_name))
     {
       if (topic.second->hasTopic(topic_name))
@@ -243,10 +243,12 @@ void TargetTabWidget::loadWidget(const rviz::Config& config)
     }
   }
 
-  float param_double;
   for (const std::pair<const std::string, QLineEdit*>& param : target_real_dims_)
+  {
+    float param_double;
     if (config.mapGetFloat(param.first.c_str(), &param_double)) 
       param.second->setText(std::to_string(param_double).c_str());
+  }
 }
 
 void TargetTabWidget::saveWidget(rviz::Config& config)

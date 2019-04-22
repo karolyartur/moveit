@@ -48,6 +48,11 @@
 #include <QProgressBar>
 #include <QStandardItemModel>
 
+// ros
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_listener.h>
+#include <rviz_visual_tools/tf_visual_tools.h>
+
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>
 #include <rviz/panel.h>
@@ -55,6 +60,12 @@
 
 namespace moveit_rviz_plugin
 {
+enum SENSOR_MOUNT_TYPE
+{
+  EYE_TO_HAND = 0,
+  EYE_IN_HAND = 1,
+};
+
 class ControlTabWidget: public QWidget
 {
   Q_OBJECT
@@ -63,12 +74,26 @@ public:
   explicit ControlTabWidget(QWidget* parent = Q_NULLPTR);
   ~ControlTabWidget()
   {
+    tf_tools_.reset();
   }
 
   void loadWidget(const rviz::Config& config);
   void saveWidget(rviz::Config& config);
 
+  void setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub);
+
+  void addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, 
+                               const geometry_msgs::TransformStamped& bTe, int id);
+
+public Q_SLOTS:
+
+  void UpdateSensorMountType(QString setup);
+
+  void updateFrameNames(std::map<std::string, std::string> names);
+
 private Q_SLOTS:
+
+  void takeSampleBtnClicked(bool clicked);
 
 Q_SIGNALS:
 
@@ -86,6 +111,7 @@ private:
   QPushButton* reset_sample_btn_;
 
   QPushButton* start_auto_calib_btn_;
+  QPushButton* pause_auto_calib_btn_;
   QPushButton* skip_robot_state_btn_;
 
   // Load & save pose samples and joint goals
@@ -99,10 +125,22 @@ private:
   // Variables   
   // **************************************************************
 
+  SENSOR_MOUNT_TYPE sensor_mount_type_;
+
+  std::map<std::string, std::string> frame_names_;
+
+  // Transform samples
+  std::vector<Eigen::Isometry3d> effector_wrt_world_;
+  std::vector<Eigen::Isometry3d> object_wrt_sensor_;
+
   // ************************************************************** 
   // Ros components   
   // **************************************************************
 
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
+
+  rviz_visual_tools::TFVisualToolsPtr tf_tools_;
 };
 
 } // namespace moveit_rviz_plugin
