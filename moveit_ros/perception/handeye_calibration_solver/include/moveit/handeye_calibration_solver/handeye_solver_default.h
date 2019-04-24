@@ -34,55 +34,31 @@
 
 /* Author: Yu Yan */
 
-#ifndef MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_CALIBRATION_GUI_
-#define MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_CALIBRATION_GUI_
+#ifndef MOVEIT_HANDEYE_DEFAULT_SOLVER_
+#define MOVEIT_HANDEYE_DEFAULT_SOLVER_
 
-// qt
+#include <moveit/handeye_calibration_solver/handeye_solver_base.h>
 
-// ros
-#include <rviz_visual_tools/tf_visual_tools.h>
-
-// local
-#include <moveit/handeye_calibration_rviz_plugin/handeye_target_widget.h>
-#include <moveit/handeye_calibration_rviz_plugin/handeye_context_widget.h>
-#include <moveit/handeye_calibration_rviz_plugin/handeye_control_widget.h>
-
-#ifndef Q_MOC_RUN
-#include <ros/ros.h>
-#include <rviz/panel.h>
-#endif
-
-namespace moveit_rviz_plugin
+namespace moveit_handeye_calibration
 {
-class HandEyeCalibrationGui : public rviz::Panel
+class HandEyeSolverDefault : public HandEyeSolverBase
 {
-  Q_OBJECT
 public:
-  explicit HandEyeCalibrationGui(QWidget* parent = 0);
-  ~HandEyeCalibrationGui() override;
+  HandEyeSolverDefault() = default;
+  ~HandEyeSolverDefault() = default;
 
-  virtual void load(const rviz::Config& config);
-  virtual void save(rviz::Config config) const;  
+  virtual void initialize() override;
 
-protected Q_SLOTS:
+  virtual std::vector<std::string>& getSolverNames() override;
+
+  virtual bool solve(std::vector<Eigen::Isometry3d>& effector_wrt_world, 
+                     std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup) override;
 
 private:
 
-  // ******************************************************************************************
-  // Qt Components
-  // ******************************************************************************************
-
-  TargetTabWidget* tab_target_;
-  ContextTabWidget* tab_context_;
-  ControlTabWidget* tab_control_;
-
-  // ******************************************************************************************
-  // Ros Components
-  // ******************************************************************************************
-
-  rviz_visual_tools::TFVisualToolsPtr tf_tools_;
+  std::vector<std::string> solver_names_;
 };
 
-} // namedist moveit_rviz_plugin
+} // namespace moveit_handeye_calibration
 
 #endif

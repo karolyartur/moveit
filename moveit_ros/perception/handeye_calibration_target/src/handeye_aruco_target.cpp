@@ -34,7 +34,7 @@
 
 /* Author: Yu Yan */
 
-#include <moveit/handeye_calibration_target_plugin/handeye_aruco_target.h>
+#include <moveit/handeye_calibration_target/handeye_aruco_target.h>
 
 namespace moveit_handeye_calibration
 {
@@ -61,35 +61,27 @@ bool HandEyeArucoTarget::setTargetIntrinsicParams(const int& markers_x, const in
                                   << "separation " << std::to_string(separation) << "\n"
                                   << "border_bits" << std::to_string(border_bits) << "\n"
                                   << "dictionary_id " << dictionary_id << "\n");
-
-  if (markers_x > 0 && markers_y > 0 && marker_size > 0 && separation > 0 && border_bits > 0)
+  if (markers_x > 0 && markers_y > 0 && marker_size > 0 && separation > 0 && border_bits > 0 && !dictionary_id.empty())
   {
+    std::lock_guard<std::mutex> lck(aruco_mtx_);
     markers_x_ = markers_x;
     markers_y_ = markers_y; 
     marker_size_ = marker_size; 
     separation_ = separation;
     border_bits_ = border_bits;
-  }
-  else
-  {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid target intrinsic params.");
-    return false;
-  }
-  
-  if (!dictionary_id.empty())
-  {
+
     const auto& it = dict_map_.find(dictionary_id);
     if (it != dict_map_.end())
       dict_ = it->second;
     else
     {
-      ROS_ERROR_STREAM_NAMED(LOGNAME, "Dictionary name is incorrect.");
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid dictionary name.");
       return false;
     }
   }
   else
   {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "Dictionary id is not assigned.");
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid target intrinsic params.");
     return false;
   }
 
@@ -104,6 +96,7 @@ bool HandEyeArucoTarget::setTargetDimension(const double& marker_size, const dou
 
   if (marker_size > 0 && marker_seperation > 0)
   {
+    std::lock_guard<std::mutex> lck(aruco_mtx_);
     marker_size_real_ = marker_size;
     marker_seperation_real_ = marker_seperation;
   }
@@ -141,18 +134,20 @@ bool HandEyeArucoTarget::createTargetImage(cv::Mat& image)
 
 bool HandEyeArucoTarget::detectTargetPose(cv::Mat& image)
 {
+  std::lock_guard<std::mutex> lck(base_mtx_);
   try
   {
     // Detect aruco board
+    aruco_mtx_.lock();
     cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(dict_);
     cv::Ptr<cv::aruco::GridBoard> board = cv::aruco::GridBoard::create(markers_x_, markers_y_, 
                                                                        marker_size_real_, marker_seperation_real_, dictionary);
-
+    aruco_mtx_.unlock();
     cv::Ptr<cv::aruco::DetectorParameters> params_ptr(new cv::aruco::DetectorParameters());
 #if CV_MAJOR_VERSION == 3 && CV_MINOR_VERSION == 2
-      params_ptr->doCornerRefinement = true;
+    params_ptr->doCornerRefinement = true;
 #else
-      params_ptr->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX;
+    params_ptr->cornerRefinementMethod = cv::aruco::CORNER_REFINE_NONE;
 #endif
 
     std::vector<int> ids;
@@ -207,14 +202,14 @@ geometry_msgs::TransformStamped HandEyeArucoTarget::getPose(std::string& frame_i
   transform_stamped.header.frame_id = frame_id;
   transform_stamped.child_frame_id = "handeye_target";
 
-  tf2::Quaternion q;
+  tf2::Quaternion q(0, 0, 0, 1);
   getTFQuaternion(q);
   transform_stamped.transform.rotation.x = q.getX();
   transform_stamped.transform.rotation.y = q.getY();
   transform_stamped.transform.rotation.z = q.getZ();
   transform_stamped.transform.rotation.w = q.getW();
   
-  std::vector<double> t;
+  std::vector<double> t(3, 0);
   getTranslationVect(t);
   transform_stamped.transform.translation.x = t[0];
   transform_stamped.transform.translation.y = t[1];
@@ -243,10 +238,17 @@ void HandEyeArucoTarget::getTFQuaternion(tf2::Quaternion& q)
 
 void HandEyeArucoTarget::getTranslationVect(std::vector<double>& t)
 {
-  t.clear();
-  t.resize(3);
-  for (size_t i = 0; i < 3; ++i)
-    t[i] = tvect_[i];
+  if (tvect_.rows == 3 && tvect_.cols == 1)
+  {
+    t.clear();
+    t.resize(3);
+    for (size_t i = 0; i < 3; ++i)
+      t[i] = tvect_[i];
+  }
+  else
+  {
+    ROS_ERROR_NAMED(LOGNAME, "Wrong translation matrix dimensions: %dx%d, it should be 3x1", tvect_.rows, tvect_.cols);    
+  }
 }
 
 } // namespace moveit_handeye_calibration

@@ -57,6 +57,7 @@
 #include <rviz_visual_tools/rviz_visual_tools.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
+#include <moveit/handeye_calibration_solver/handeye_solver_base.h>
 
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>
@@ -64,6 +65,7 @@
 #endif
 
 namespace rvt = rviz_visual_tools;
+namespace mhc = moveit_handeye_calibration;
 
 namespace moveit_rviz_plugin
 {
@@ -195,7 +197,7 @@ private Q_SLOTS:
 
 Q_SIGNALS:
 
-  void sensorMountTypeChanged(QString sensor_mount_type);
+  void sensorMountTypeChanged(int index);
 
   void frameNameChanged(std::map<std::string, std::string> names);
 

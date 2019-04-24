@@ -34,55 +34,8 @@
 
 /* Author: Yu Yan */
 
-#ifndef MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_CALIBRATION_GUI_
-#define MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_CALIBRATION_GUI_
+#include <class_loader/class_loader.hpp>
+#include <moveit/handeye_calibration_target/handeye_aruco_target.h>
 
-// qt
-
-// ros
-#include <rviz_visual_tools/tf_visual_tools.h>
-
-// local
-#include <moveit/handeye_calibration_rviz_plugin/handeye_target_widget.h>
-#include <moveit/handeye_calibration_rviz_plugin/handeye_context_widget.h>
-#include <moveit/handeye_calibration_rviz_plugin/handeye_control_widget.h>
-
-#ifndef Q_MOC_RUN
-#include <ros/ros.h>
-#include <rviz/panel.h>
-#endif
-
-namespace moveit_rviz_plugin
-{
-class HandEyeCalibrationGui : public rviz::Panel
-{
-  Q_OBJECT
-public:
-  explicit HandEyeCalibrationGui(QWidget* parent = 0);
-  ~HandEyeCalibrationGui() override;
-
-  virtual void load(const rviz::Config& config);
-  virtual void save(rviz::Config config) const;  
-
-protected Q_SLOTS:
-
-private:
-
-  // ******************************************************************************************
-  // Qt Components
-  // ******************************************************************************************
-
-  TargetTabWidget* tab_target_;
-  ContextTabWidget* tab_context_;
-  ControlTabWidget* tab_control_;
-
-  // ******************************************************************************************
-  // Ros Components
-  // ******************************************************************************************
-
-  rviz_visual_tools::TFVisualToolsPtr tf_tools_;
-};
-
-} // namedist moveit_rviz_plugin
-
-#endif
+CLASS_LOADER_REGISTER_CLASS(moveit_handeye_calibration::HandEyeArucoTarget, 
+                            moveit_handeye_calibration::HandEyeTargetBase)

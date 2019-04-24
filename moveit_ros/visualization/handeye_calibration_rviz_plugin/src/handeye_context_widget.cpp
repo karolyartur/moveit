@@ -291,6 +291,12 @@ void ContextTabWidget::loadWidget(const rviz::Config& config)
       dim.second->setValue(value);
   }
   updateAllMarkers();
+
+  std::map<std::string, std::string> names;
+  for (std::pair<const std::string, TFFrameNameComboBox*>& frame : frames_)
+    names.insert(std::make_pair(frame.first, frame.second->currentText().toStdString()));
+    
+  Q_EMIT frameNameChanged(names);
 }
 
 void ContextTabWidget::saveWidget(rviz::Config& config)
@@ -319,8 +325,16 @@ void ContextTabWidget::updateAllMarkers()
     visual_tools_->deleteAllMarkers();
     tf_tools_->clearAllTransforms();
     // tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
+    
+    QString from_frame("");
+    mhc::SENSOR_MOUNT_TYPE setup = static_cast<mhc::SENSOR_MOUNT_TYPE>(sensor_mount_type_->currentIndex());
 
-    QString from_frame = sensor_mount_type_->currentIndex() > 0 ? frames_["eef"]->currentText() : frames_["base"]->currentText();
+    if (setup == mhc::EYE_TO_HAND)
+      from_frame = frames_["base"]->currentText();
+
+    if (setup == mhc::EYE_IN_HAND)
+      from_frame = frames_["eef"]->currentText();
+
     if (!from_frame.isEmpty())
     {
       for (std::pair<const std::string, TFFrameNameComboBox*> frame : frames_)
@@ -489,7 +503,7 @@ void ContextTabWidget::updateSensorMountType(int index)
 
   updateAllMarkers();
 
-  Q_EMIT sensorMountTypeChanged(sensor_mount_type_->currentText());
+  Q_EMIT sensorMountTypeChanged(index);
 }
 
 void ContextTabWidget::updateFrameName(int index)

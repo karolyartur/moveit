@@ -66,7 +66,7 @@
 
 #include <pluginlib/class_loader.hpp>
 #include <rviz_visual_tools/tf_visual_tools.h>
-#include <moveit/handeye_calibration_target_plugin/handeye_target_base.h>
+#include <moveit/handeye_calibration_target/handeye_target_base.h>
 
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>

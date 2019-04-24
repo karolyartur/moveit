@@ -69,8 +69,8 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
           tab_context_, SLOT(setOpticalFrame(std::string&)));
   tab_control_ = new ControlTabWidget();
   tab_control_->setTFTool(tf_tools_);
-  connect(tab_context_, SIGNAL(sensorMountTypeChanged(QString)), 
-          tab_control_, SLOT(UpdateSensorMountType(QString)));
+  connect(tab_context_, SIGNAL(sensorMountTypeChanged(int)), 
+          tab_control_, SLOT(UpdateSensorMountType(int)));
   connect(tab_context_, SIGNAL(frameNameChanged(std::map<std::string, std::string>)),
           tab_control_, SLOT(updateFrameNames(std::map<std::string, std::string>)));
 

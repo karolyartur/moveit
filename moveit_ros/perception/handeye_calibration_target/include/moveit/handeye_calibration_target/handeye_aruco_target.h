@@ -42,7 +42,7 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <moveit/handeye_calibration_target_plugin/handeye_target_base.h>
+#include <moveit/handeye_calibration_target/handeye_target_base.h>
 
 // opencv
 #include <opencv2/aruco.hpp>
@@ -112,6 +112,8 @@ private:
 
   // Rotation and translation of the board w.r.t the camera frame
   cv::Vec3d tvect_, rvect_;
+
+  std::mutex aruco_mtx_;
 };
 
 } // namespace moveit_handeye_calibration

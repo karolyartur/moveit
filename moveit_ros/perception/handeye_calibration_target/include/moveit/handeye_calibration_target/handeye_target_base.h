@@ -37,6 +37,7 @@
 #ifndef MOVEIT_HANDEYE_TARGET_BASE_
 #define MOVEIT_HANDEYE_TARGET_BASE_
 
+#include <mutex>
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -77,19 +78,23 @@ public:
     {
       ROS_DEBUG_STREAM_NAMED("handeye_target_base", "CameraInfo set: " << *msg);
       
-      // Store camera matrix info
-      for (size_t i = 0; i < 3; i++) 
+      if (msg->K.size() == 9 && msg->D.size() == 5)
       {
-        for (size_t j = 0; j < 3; j++) 
+        std::lock_guard<std::mutex> lck(base_mtx_);
+        // Store camera matrix info
+        for (size_t i = 0; i < 3; i++) 
         {
-          camera_matrix_.at<double>(i, j) = msg->K[i*3+j];
+          for (size_t j = 0; j < 3; j++) 
+          {
+            camera_matrix_.at<double>(i, j) = msg->K[i*3+j];
+          }
         }
-      }
-
-      // Store camera distortion info
-      for (size_t i = 0; i < 5; i++) 
-      {
-        distor_coeffs_.at<double>(i,0) = msg->D[i];
+      
+        // Store camera distortion info
+        for (size_t i = 0; i < 5; i++) 
+        {
+          distor_coeffs_.at<double>(i,0) = msg->D[i];
+        }
       }
     }
     else
@@ -110,6 +115,7 @@ protected:
   // Assume `plumb_bob` model
   cv::Mat distor_coeffs_;
 
+  std::mutex base_mtx_;
 };
 }  // namespace moveit_handeye_calibration
 #endif

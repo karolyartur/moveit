@@ -39,7 +39,7 @@
 namespace moveit_rviz_plugin
 {
 ControlTabWidget::ControlTabWidget(QWidget* parent)
-  : QWidget(parent), tf_listener_(tf_buffer_), sensor_mount_type_(EYE_TO_HAND)
+  : QWidget(parent), tf_listener_(tf_buffer_), sensor_mount_type_(mhc::EYE_TO_HAND)
 {
   QVBoxLayout* layout = new QVBoxLayout();
   this->setLayout(layout);
@@ -47,7 +47,7 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   QHBoxLayout* calib_layout = new QHBoxLayout();
   layout->addLayout(calib_layout);
 
-  // Auto calibrate progress
+  // Calibration progress
   auto_progress_ = new QProgressBar();
   auto_progress_->setTextVisible(true);
   layout->addWidget(auto_progress_);
@@ -144,63 +144,52 @@ void ControlTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
 void ControlTabWidget::addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, 
                                                const geometry_msgs::TransformStamped& bTe, int id)
 {
-
   std::string item_name = "Sample " + std::to_string(id);
   QStandardItem* parent = new QStandardItem(QString(item_name.c_str()));
   tree_view_model_->appendRow(parent);
 
+  std::ostringstream ss;
+
   QStandardItem* child_1 = new QStandardItem("bTe");
-  QStandardItem* child_1_1 = new QStandardItem("T");
-  child_1_1->appendRow(new QStandardItem(("x: " + std::to_string(bTe.transform.translation.x)).c_str()));
-  child_1_1->appendRow(new QStandardItem(("y: " + std::to_string(bTe.transform.translation.y)).c_str()));
-  child_1_1->appendRow(new QStandardItem(("z: " + std::to_string(bTe.transform.translation.z)).c_str()));
-  QStandardItem* child_1_2 = new QStandardItem("R");
-  child_1_2->appendRow(new QStandardItem(("x: " + std::to_string(bTe.transform.rotation.x)).c_str()));
-  child_1_2->appendRow(new QStandardItem(("y: " + std::to_string(bTe.transform.rotation.y)).c_str()));
-  child_1_2->appendRow(new QStandardItem(("z: " + std::to_string(bTe.transform.rotation.z)).c_str()));
-  child_1_2->appendRow(new QStandardItem(("w: " + std::to_string(bTe.transform.rotation.w)).c_str()));
-  child_1->appendRow(child_1_1);
-  child_1->appendRow(child_1_2);
+  ss << bTe.transform;
+  child_1->appendRow(new QStandardItem(ss.str().c_str()));
   parent->appendRow(child_1);
 
   QStandardItem* child_2 = new QStandardItem("cTo");
-  QStandardItem* child_2_1 = new QStandardItem("T");
-  child_2_1->appendRow(new QStandardItem(("x: " + std::to_string(cTo.transform.translation.x)).c_str()));
-  child_2_1->appendRow(new QStandardItem(("y: " + std::to_string(cTo.transform.translation.y)).c_str()));
-  child_2_1->appendRow(new QStandardItem(("z: " + std::to_string(cTo.transform.translation.z)).c_str()));
-  QStandardItem* child_2_2 = new QStandardItem("R");
-  child_2_2->appendRow(new QStandardItem(("x: " + std::to_string(cTo.transform.rotation.x)).c_str()));
-  child_2_2->appendRow(new QStandardItem(("y: " + std::to_string(cTo.transform.rotation.y)).c_str()));
-  child_2_2->appendRow(new QStandardItem(("z: " + std::to_string(cTo.transform.rotation.z)).c_str()));
-  child_2_2->appendRow(new QStandardItem(("w: " + std::to_string(cTo.transform.rotation.w)).c_str()));
-  child_2->appendRow(child_2_1);
-  child_2->appendRow(child_2_2);
+  ss.str("");
+  ss << cTo.transform;
+  child_2->appendRow(new QStandardItem(ss.str().c_str()));
   parent->appendRow(child_2);
 }
 
-void ControlTabWidget::UpdateSensorMountType(QString setup)
+void ControlTabWidget::UpdateSensorMountType(int index)
 {
-  if (setup.compare("Eye-to-Hand"))
-    sensor_mount_type_ = EYE_TO_HAND;
-
-  if (setup.compare("Eye-in-Hand"))
-    sensor_mount_type_ = EYE_IN_HAND;
-
-  ROS_DEBUG_STREAM("Sensor mount type changed: " << setup.toStdString());
+  if (0 <= index && index <= 1)
+  {
+    sensor_mount_type_ = static_cast<mhc::SENSOR_MOUNT_TYPE>(index); 
+  }
 }
 
 void ControlTabWidget::updateFrameNames(std::map<std::string, std::string> names)
 {
   frame_names_ = names;
+  ROS_DEBUG("Frame names changed:");
   for (const std::pair<const std::string, std::string>& name : names)
     ROS_DEBUG_STREAM(name.first << " : " << name.second);
 }
 
 void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 {
+  if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
+     frame_names_["base"].empty() || frame_names_["eef"].empty())
+  {
+    QMessageBox::warning(this, tr("Empty Frame Name"), tr("At least one of the four frame names is empty."));
+    return;
+  }
 
   geometry_msgs::TransformStamped cTo;
   geometry_msgs::TransformStamped bTe;
+  
   try
   {
     // Get the transform of the object w.r.t the camera

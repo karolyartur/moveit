@@ -45,6 +45,7 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QProgressBar>
 #include <QStandardItemModel>
 
@@ -52,20 +53,17 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_listener.h>
 #include <rviz_visual_tools/tf_visual_tools.h>
+#include <moveit/handeye_calibration_solver/handeye_solver_base.h>
 
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #endif
 
+namespace mhc = moveit_handeye_calibration;
+
 namespace moveit_rviz_plugin
 {
-enum SENSOR_MOUNT_TYPE
-{
-  EYE_TO_HAND = 0,
-  EYE_IN_HAND = 1,
-};
-
 class ControlTabWidget: public QWidget
 {
   Q_OBJECT
@@ -87,15 +85,13 @@ public:
 
 public Q_SLOTS:
 
-  void UpdateSensorMountType(QString setup);
+  void UpdateSensorMountType(int index);
 
   void updateFrameNames(std::map<std::string, std::string> names);
 
 private Q_SLOTS:
 
   void takeSampleBtnClicked(bool clicked);
-
-Q_SIGNALS:
 
 private:
 
@@ -125,7 +121,7 @@ private:
   // Variables   
   // **************************************************************
 
-  SENSOR_MOUNT_TYPE sensor_mount_type_;
+  mhc::SENSOR_MOUNT_TYPE sensor_mount_type_;
 
   std::map<std::string, std::string> frame_names_;
 

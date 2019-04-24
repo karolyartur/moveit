@@ -34,8 +34,24 @@
 
 /* Author: Yu Yan */
 
-#include <class_loader/class_loader.hpp>
-#include <moveit/handeye_calibration_target_plugin/handeye_aruco_target.h>
+#include <moveit/handeye_calibration_solver/handeye_solver_default.h>
 
-CLASS_LOADER_REGISTER_CLASS(moveit_handeye_calibration::HandEyeArucoTarget, 
-                            moveit_handeye_calibration::HandEyeTargetBase)
+namespace moveit_handeye_calibration
+{
+void HandEyeSolverDefault::initialize()
+{
+  solver_names_ = {"Daniilidis1999", "ParkBryan1994", "TsaiLenz1989"};
+}
+
+std::vector<std::string>& HandEyeSolverDefault::getSolverNames()
+{
+  return solver_names_;
+}
+
+bool HandEyeSolverDefault::solve(std::vector<Eigen::Isometry3d>& effector_wrt_world, 
+                     std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup)
+{
+  
+}  
+
+} // namespace moveit_handeye_calibration
