@@ -995,17 +995,36 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
 
 const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id) const
 {
+  bool ignored_value;
+  return getFrameTransform(frame_id, ignored_value);
+}
+
+const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id, bool& frame_found) const
+{
+  const LinkModel* ignored_output;
+  return getFrameInfo(frame_id, ignored_output, frame_found);
+}
+
+const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id,
+                                    const LinkModel* &robot_link, bool& frame_found) const
+{
   if (!frame_id.empty() && frame_id[0] == '/')
-    return getFrameTransform(frame_id.substr(1));
+    return getFrameInfo(frame_id.substr(1), robot_link, frame_found);
   BOOST_VERIFY(checkLinkTransforms());
 
   static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
   // Check if frame is in robot links
   if (frame_id == robot_model_->getModelFrame())
+  {
+    robot_link = robot_model_->getRootLink();
+    frame_found = true;
     return IDENTITY_TRANSFORM;
+  }
   if (robot_model_->hasLinkModel(frame_id))
   {
     const LinkModel* lm = robot_model_->getLinkModel(frame_id);
+    robot_link = robot_model_->getLinkModel(frame_id);
+    frame_found = true;
     return global_link_transforms_[lm->getLinkIndex()];
   }
 
@@ -1013,8 +1032,8 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
   std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(frame_id);
   if (jt == attached_body_map_.end())
   {
-    ROS_ERROR_NAMED(LOGNAME, "Transform from frame '%s' to frame '%s' is not known "
-                             "('%s' should be a link name or an attached body's id).",
+    // This used to be an error message, but now that "knowsFrameTransform" is subsumed into getFrameTransform, 
+    // it would be displayed during harmless searches => show in debug log only.
     ROS_DEBUG_NAMED(LOGNAME,
                     "Transform from frame '%s' to frame '%s' is not known to the robot state "
                     "('%s' should be a link name, an attached body, or the name of an attached body's subframe).",
@@ -1025,15 +1044,20 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
   for (std::pair<std::string, AttachedBody*> body : attached_body_map_)  // Check if an AttachedBody has a subframe with name frame_id
   {
     if (body.second->hasSubframeTransform(frame_id))
+    {
+      robot_link = body.second->getAttachedLink();
+      frame_found = true;
       return body.second->getSubframeTransform(frame_id);
+    }
   }
-  }
+  
   const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
   if (tf.empty())
   {
     ROS_DEBUG_NAMED(LOGNAME, "'%s' is the name of an AttachedBody, but it has no geometry associated to it. No "
                              "transform to return.",
                     frame_id.c_str());
+    frame_found = false;
     return IDENTITY_TRANSFORM;
   }
   if (tf.size() > 1)
@@ -1041,12 +1065,16 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
     ROS_DEBUG_NAMED(LOGNAME, "There are multiple geometries associated to attached body '%s'. "
                              "Returning the transform for the first one.",
                     frame_id.c_str());
+    robot_link = jt->second->getAttachedLink();
+    frame_found = true;
     return tf[0];
   }
 
   ROS_DEBUG_NAMED(LOGNAME, "robotState getFrameTransform did not find a frame with name %s.", frame_id);
+  frame_found = false;
   return IDENTITY_TRANSFORM;
 }
+
 bool RobotState::knowsFrameTransform(const std::string& frame_id) const
 {
   if (!frame_id.empty() && frame_id[0] == '/')
