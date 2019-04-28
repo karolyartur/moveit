@@ -41,13 +41,15 @@ moveit::core::AttachedBody::AttachedBody(const LinkModel* parent_link_model, con
                                          const std::vector<shapes::ShapeConstPtr>& shapes,
                                          const EigenSTL::vector_Isometry3d& attach_trans,
                                          const std::set<std::string>& touch_links,
-                                         const trajectory_msgs::JointTrajectory& detach_posture)
+                                         const trajectory_msgs::JointTrajectory& detach_posture,
+                                         const std::map<std::string, Eigen::Isometry3d>& subframe_poses)
   : parent_link_model_(parent_link_model)
   , id_(id)
   , shapes_(shapes)
   , attach_trans_(attach_trans)
   , touch_links_(touch_links)
   , detach_posture_(detach_posture)
+  , subframe_poses_(subframe_poses)
 {
   global_collision_body_transforms_.resize(attach_trans.size());
   for (Eigen::Isometry3d& global_collision_body_transform : global_collision_body_transforms_)
