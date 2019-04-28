@@ -136,6 +136,95 @@ bool World::hasObject(const std::string& object_id) const
   return objects_.find(object_id) != objects_.end();
 }
 
+bool World::knowsTransform(const std::string& object_id) const
+{
+  // Check object names first
+  if (objects_.find(object_id) != objects_.end())
+    return true;
+  else  // Then objects' subframes
+  {
+    if (object_id.find("/")!=std::string::npos)
+    {
+      for (const std::pair<std::string, ObjectPtr>& object : objects_)
+      {
+        try 
+        {
+          // Compare both object name and subframe name
+          int name_length = object.second->id_.length();
+          if (object.second->id_ == object_id.substr(0,name_length))
+          {
+            if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
+              return true;
+          }
+        }
+        catch (const std::exception& e) {;}
+      }
+    }
+  }
+  return false;
+}
+
+const Eigen::Isometry3d& World::getTransform(const std::string& object_id) const
+{
+  // This is almost identical to the function below, except for the return.
+  std::map<std::string, ObjectPtr>::const_iterator it = objects_.find(object_id);
+  if (it != objects_.end())
+    return it->second->shape_poses_[0];
+  else  // Find within subframes
+  {
+    if (object_id.find("/")!=std::string::npos)
+    {
+      for (const std::pair<std::string, ObjectPtr>& object : objects_)
+      {
+        try 
+        {
+          // Compare both object name and subframe name
+          int name_length = object.second->id_.length();
+          if (object.second->id_ == object_id.substr(0,name_length))
+          {
+            if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
+              return object.second->subframe_poses_[object_id.substr(name_length+1)];
+          }
+        }
+        catch (const std::exception& e) {;}
+      }
+    }
+  }
+  throw std::runtime_error("No transform found for object_id: " + object_id);
+}
+
+const Eigen::Isometry3d& World::getTransform(const std::string& object_id, bool& frame_found) const
+{
+  std::map<std::string, ObjectPtr>::const_iterator it = objects_.find(object_id);
+  if (it != objects_.end())
+    return it->second->shape_poses_[0];
+  else  // Find within subframes
+  {
+    for (const std::pair<std::string, ObjectPtr>& object : objects_)
+    {
+      // Strip the object's name that should be prepended to the requested frame
+      try 
+      {
+        // Strip the object's name that should be prepended to the requested frame
+        int name_length = object.second->id_.length();
+        if ("/" == object_id.substr(name_length, 1))
+          if (object.second->id_ == object_id.substr(0,name_length))
+          {
+            if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
+            {
+              frame_found = true;
+              return object.second->subframe_poses_[object_id.substr(name_length+1)];
+            }
+          }
+      }
+      catch (const std::exception& e) {;}
+    }
+  }
+  static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
+  frame_found = false;
+  return IDENTITY_TRANSFORM;
+}
+
 bool World::moveShapeInObject(const std::string& object_id, const shapes::ShapeConstPtr& shape,
                               const Eigen::Isometry3d& pose)
 {
@@ -169,6 +258,18 @@ bool World::moveObject(const std::string& object_id, const Eigen::Isometry3d& tr
     it->second->shape_poses_[i] = transform * it->second->shape_poses_[i];
   }
   notify(it->second, MOVE_SHAPE);
+  return true;
+}
+
+bool World::replaceShapesInObject(const std::string& object_id, const std::vector<shapes::ShapeConstPtr>& shapes,
+                                  const EigenSTL::vector_Isometry3d& poses)
+{
+  auto it = objects_.find(object_id);
+  if (it == objects_.end())
+    return false;
+  it->second->shapes_.clear();
+  it->second->shape_poses_.clear();
+  addToObject(object_id, shapes, poses);
   return true;
 }
 
@@ -216,6 +317,34 @@ void World::clearObjects()
 {
   notifyAll(DESTROY);
   objects_.clear();
+}
+
+bool World::setSubframesOfObject(const std::string& object_id,
+                                   const std::map<std::string, Eigen::Isometry3d>& subframe_poses)
+{
+  auto obj_pair = objects_.find(object_id);
+  if (obj_pair == objects_.end())
+  {
+    return false;
+  }
+  obj_pair->second->subframe_poses_.clear();
+  for (const std::pair<std::string, Eigen::Isometry3d>& subframe : subframe_poses)
+  {
+    obj_pair->second->subframe_poses_.insert(subframe);
+  }
+  return true;
+}
+
+bool World::setSubframesOfObject(const std::string& object_id,
+                                   const moveit::core::FixedTransformsMap& subframe_poses)
+{
+  auto obj_pair = objects_.find(object_id);
+  if (obj_pair == objects_.end())
+  {
+    return false;
+  }
+  obj_pair->second->subframe_poses_ = subframe_poses;
+  return true;
 }
 
 World::ObserverHandle World::addObserver(const ObserverCallbackFn& callback)
