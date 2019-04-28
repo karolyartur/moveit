@@ -38,6 +38,7 @@
 #define MOVEIT_ROBOT_STATE_ATTACHED_BODY_
 
 #include <moveit/robot_model/link_model.h>
+#include <moveit/transforms/transforms.h>
 #include <eigen_stl_containers/eigen_stl_containers.h>
 #include <boost/function.hpp>
 #include <trajectory_msgs/JointTrajectory.h>
@@ -62,7 +63,8 @@ public:
      object is specified by \e touch_links. */
   AttachedBody(const LinkModel* link, const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
                const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
-               const trajectory_msgs::JointTrajectory& attach_posture);
+               const trajectory_msgs::JointTrajectory& attach_posture,
+               const moveit::core::FixedTransformsMap& subframe_poses);
 
   ~AttachedBody();
 
@@ -110,6 +112,73 @@ public:
     return attach_trans_;
   }
 
+  /** \brief Get the fixed transform to a subframe on this body (not a transform to a visual or collision shape).
+   * The frame_name needs to have the object's name prepended (e.g. "screwdriver/tip" returns true if the object's
+   * name is "screwdriver"). Returns an identity transform if frame is not found. 
+   * Use hasSubframeTransform to check if it exists.
+  */
+  const Eigen::Isometry3d& getSubframeTransform(const std::string& frame_name) const
+  {
+    // Strip the object's name that should be prepended to the requested frame
+    try 
+    {
+      if ("/" == frame_name.substr(id_.length(), 1))
+        if (id_ == frame_name.substr(0,id_.length()))
+        {
+          auto i = subframe_poses_.find(frame_name.substr(id_.length()+1));
+          if (i != subframe_poses_.end())
+            return i->second;
+        }      
+    }
+    catch (std::exception exc) {;}
+    static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
+    return IDENTITY_TRANSFORM;
+  }
+
+  /** \brief Returns true if the subframes contain the frame_name.
+   * The frame_name needs to have the object's name prepended (e.g. "screwdriver/tip" returns true if the object's
+   * name is "screwdriver").
+  */
+  bool hasSubframeTransform(const std::string& frame_name) const
+  {
+    // Strip the object's name that should be prepended to the requested frame
+    try 
+    {
+      if ("/" == frame_name.substr(id_.length(), 1))
+      {
+        if (id_ == frame_name.substr(0,id_.length()))
+        {
+          return (subframe_poses_.find(frame_name.substr(id_.length()+1)) != subframe_poses_.end());
+        }      
+      }
+    }
+    catch (std::exception exc) {;}
+    return false;
+  }
+
+  /** \brief Get all named transforms (not the ones associated to visual or collision shapes)
+   * These are also technically fixed transforms, but changing the original getFixedTransforms function would be bad.
+   */
+  const moveit::core::FixedTransformsMap& getSubframeTransforms() const
+  {
+    return subframe_poses_;
+  }
+
+  /** \brief Get all named transforms (not the ones associated to visual or collision shapes)
+   * These are also technically fixed transforms, but changing the original getFixedTransforms function would be bad.
+   */
+  void getSubframeTransforms(moveit::core::FixedTransformsMap& subframe_poses) const
+  {
+    subframe_poses = subframe_poses_;
+  }
+
+  /** \brief Set the map of subframes. */
+  void setSubframeTransforms(const moveit::core::FixedTransformsMap& subframe_poses)
+  {
+    subframe_poses_ = subframe_poses;
+  }
+
+
   /** \brief Get the global transforms for the collision bodies */
   const EigenSTL::vector_Isometry3d& getGlobalCollisionBodyTransforms() const
   {
@@ -151,6 +220,12 @@ private:
 
   /** \brief The global transforms for these attached bodies (computed by forward kinematics) */
   EigenSTL::vector_Isometry3d global_collision_body_transforms_;
+
+  /** \brief Transforms to subframes on the object. Transforms are applied to the link.
+   *  Use these to define points of interest on the object to plan with
+   *  (e.g. screwdriver_tip, kettle_spout, mug_base).
+   * */
+  moveit::core::FixedTransformsMap subframe_poses_;
 };
 }
 }
