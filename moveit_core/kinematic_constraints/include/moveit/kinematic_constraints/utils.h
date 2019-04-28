@@ -201,6 +201,19 @@ moveit_msgs::Constraints constructGoalConstraints(const std::string& link_name,
  * @return was the construction successful?
  */
 bool constructConstraints(XmlRpc::XmlRpcValue& params, moveit_msgs::Constraints& constraints);
-}
 
+/**
+ * \brief Ensures that constraints are expressed in frames that exist on the robot
+ * link model. Constraints that are expressed in frames of AttachedBody objects
+ * are transformed to the robot. This step is required to construct a valid
+ * planning request. The link_name field of the constraint is changed from
+ * the name of the object frame to the name of the robot link that the
+ * AttachedBody object is attached to.
+ * This function is used when constructing goals.
+ *
+ * @param [in] state The pointer to the state from which to generate goal joint constraints
+ * @param [in] c The constraint message to be validated (modified directly).
+ */
+bool validateConstraintFrames(const robot_state::RobotStatePtr state, moveit_msgs::Constraints& constraints);
+}
 #endif

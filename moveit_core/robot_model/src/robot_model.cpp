@@ -1125,14 +1125,14 @@ const LinkModel* RobotModel::getLinkModel(int index) const
 LinkModel* RobotModel::getLinkModel(const std::string& name, bool* has_link)
 {
   if (has_link)
-    *has_link = true;  // let's be optimistic
+    *has_link = true;  // Start out optimistic
   LinkModelMap::const_iterator it = link_model_map_.find(name);
   if (it != link_model_map_.end())
     return it->second;
 
   if (has_link)
-    *has_link = false;  // report failure via argument
-  else                  // otherwise print error
+    *has_link = false;  // Report failure via argument
+  else                  // Otherwise print error
     ROS_ERROR_NAMED(LOGNAME, "Link '%s' not found in model '%s'", name.c_str(), model_name_.c_str());
   return nullptr;
 }

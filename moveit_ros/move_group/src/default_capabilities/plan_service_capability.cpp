@@ -36,6 +36,7 @@
 
 #include "plan_service_capability.h"
 #include <moveit/planning_pipeline/planning_pipeline.h>
+#include <moveit/kinematic_constraints/utils.h>
 #include <moveit/move_group/capability_names.h>
 
 move_group::MoveGroupPlanService::MoveGroupPlanService() : MoveGroupCapability("MotionPlanService")
@@ -58,6 +59,15 @@ bool move_group::MoveGroupPlanService::computePlanService(moveit_msgs::GetMotion
   context_->planning_scene_monitor_->updateFrameTransforms();
 
   planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
+  
+  const robot_state::RobotStatePtr rs(new robot_state::RobotState(ps->getCurrentState()));
+  ROS_DEBUG("Transforming constraints to robot link (if necessary)");
+  for (moveit_msgs::Constraints& constraint : req.motion_plan_request.goal_constraints)
+    kinematic_constraints::validateConstraintFrames(rs, constraint);
+  kinematic_constraints::validateConstraintFrames(rs, req.motion_plan_request.path_constraints);
+  for (moveit_msgs::Constraints& constraint : req.motion_plan_request.trajectory_constraints.constraints)
+    kinematic_constraints::validateConstraintFrames(rs, constraint);
+
   try
   {
     planning_interface::MotionPlanResponse mp_res;

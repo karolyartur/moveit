@@ -1059,6 +1059,8 @@ public:
           if (active_target_ == POSITION)
             c.orientation_constraints.clear();
           request.goal_constraints[i] = kinematic_constraints::mergeConstraints(request.goal_constraints[i], c);
+          // This changes the link_names from AttachedBody objects to valid link_names on the robot
+          validateConstraintFrames(request.goal_constraints[i]);
         }
       }
     }
@@ -1066,9 +1068,18 @@ public:
       ROS_ERROR_NAMED("move_group_interface", "Unable to construct MotionPlanRequest representation");
 
     if (path_constraints_)
+    {
       request.path_constraints = *path_constraints_;
+      validateConstraintFrames(request.path_constraints);
+    }
     if (trajectory_constraints_)
+    {
       request.trajectory_constraints = *trajectory_constraints_;
+      for (moveit_msgs::Constraints& constraint : request.trajectory_constraints.constraints)
+      {
+        validateConstraintFrames(constraint);
+      }
+    }
   }
 
   void constructGoal(moveit_msgs::MoveGroupGoal& goal)
@@ -1146,6 +1157,17 @@ public:
   void clearTrajectoryConstraints()
   {
     trajectory_constraints_.reset();
+  }
+
+  bool validateConstraintFrames(moveit_msgs::Constraints& constraints)
+  {
+    robot_state::RobotStatePtr rs;
+    getCurrentState(rs);
+    
+    ROS_DEBUG_NAMED("move_group_interface", "Transforming constraints to robot link (if necessary)");
+    // Checks if the goal is defined either for existing link_names or the names of AttachedBody objects
+    // that are attached to the robot. The latter are transformed to link_names so the planner can deal with them.
+    return kinematic_constraints::validateConstraintFrames(rs, constraints);
   }
 
   std::vector<std::string> getKnownConstraints() const
