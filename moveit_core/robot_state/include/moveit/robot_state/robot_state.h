@@ -40,6 +40,7 @@
 
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_state/attached_body.h>
+#include <moveit/transforms/transforms.h>
 #include <moveit/macros/deprecation.h>
 #include <sensor_msgs/JointState.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -1560,7 +1561,7 @@ as the new values that correspond to the group */
       const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
       const std::string& link_name,
       const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
-      const std::map<std::string, Eigen::Isometry3d>& subframe_poses = std::map<std::string, Eigen::Isometry3d>());
+      const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap());
 
   /** @brief Add an attached body to a link
    * @param id The string id associated with the attached body
@@ -1583,7 +1584,7 @@ as the new values that correspond to the group */
       const EigenSTL::vector_Isometry3d& attach_trans, const std::vector<std::string>& touch_links,
       const std::string& link_name,
       const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
-      const std::map<std::string, Eigen::Isometry3d>& subframe_poses = std::map<std::string, Eigen::Isometry3d>())
+      const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap())
   {
     std::set<std::string> touch_links_set(touch_links.begin(), touch_links.end());
     attachBody(id, shapes, attach_trans, touch_links_set, link_name, detach_posture, subframe_poses);

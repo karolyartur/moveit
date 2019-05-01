@@ -38,6 +38,7 @@
 #define MOVEIT_ROBOT_STATE_ATTACHED_BODY_
 
 #include <moveit/robot_model/link_model.h>
+#include <moveit/transforms/transforms.h>
 #include <eigen_stl_containers/eigen_stl_containers.h>
 #include <boost/function.hpp>
 #include <trajectory_msgs/JointTrajectory.h>
@@ -63,7 +64,7 @@ public:
   AttachedBody(const LinkModel* link, const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
                const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
                const trajectory_msgs::JointTrajectory& attach_posture,
-               const std::map<std::string, Eigen::Isometry3d>& subframe_poses);
+               const moveit::core::FixedTransformsMap& subframe_poses);
 
   ~AttachedBody();
 
@@ -121,7 +122,7 @@ public:
     // Strip the object's name that should be prepended to the requested frame
     try 
     {
-      if ("/" == frame_name.substr(id_.length(), id_.length()+1))
+      if ("/" == frame_name.substr(id_.length(), 1))
         if (id_ == frame_name.substr(0,id_.length()))
         {
           auto i = subframe_poses_.find(frame_name.substr(id_.length()+1));
@@ -143,11 +144,13 @@ public:
     // Strip the object's name that should be prepended to the requested frame
     try 
     {
-      if ("/" == frame_name.substr(id_.length(), id_.length()+1))
+      if ("/" == frame_name.substr(id_.length(), 1))
+      {
         if (id_ == frame_name.substr(0,id_.length()))
         {
           return (subframe_poses_.find(frame_name.substr(id_.length()+1)) != subframe_poses_.end());
         }      
+      }
     }
     catch (std::exception exc) {;}
     return false;
@@ -156,7 +159,7 @@ public:
   /** \brief Get all named transforms (not the ones associated to visual or collision shapes)
    * These are also technically fixed transforms, but changing the original getFixedTransforms function would be bad.
    */
-  const std::map<std::string, Eigen::Isometry3d>& getSubframeTransforms() const
+  const moveit::core::FixedTransformsMap& getSubframeTransforms() const
   {
     return subframe_poses_;
   }
@@ -164,13 +167,13 @@ public:
   /** \brief Get all named transforms (not the ones associated to visual or collision shapes)
    * These are also technically fixed transforms, but changing the original getFixedTransforms function would be bad.
    */
-  void getSubframeTransforms(std::map<std::string, Eigen::Isometry3d>& subframe_poses) const
+  void getSubframeTransforms(moveit::core::FixedTransformsMap& subframe_poses) const
   {
     subframe_poses = subframe_poses_;
   }
 
   /** \brief Set the map of subframes. */
-  void setSubframeTransforms(const std::map<std::string, Eigen::Isometry3d>& subframe_poses)
+  void setSubframeTransforms(const moveit::core::FixedTransformsMap& subframe_poses)
   {
     subframe_poses_ = subframe_poses;
   }
@@ -222,7 +225,7 @@ private:
    *  Use these to define points of interest on the object to plan with
    *  (e.g. screwdriver_tip, kettle_spout, mug_base).
    * */
-  std::map<std::string, Eigen::Isometry3d> subframe_poses_;
+  moveit::core::FixedTransformsMap subframe_poses_;
 };
 }
 }

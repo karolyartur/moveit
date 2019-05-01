@@ -889,7 +889,7 @@ void RobotState::attachBody(AttachedBody* attached_body)
 void RobotState::attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
                             const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
                             const std::string& link, const trajectory_msgs::JointTrajectory& detach_posture,
-                            const std::map<std::string, Eigen::Isometry3d>& subframe_poses)
+                            const moveit::core::FixedTransformsMap& subframe_poses)
 {
   const LinkModel* l = robot_model_->getLinkModel(link);
   AttachedBody* body = new AttachedBody(l, id, shapes, attach_trans, touch_links, detach_posture, subframe_poses);
