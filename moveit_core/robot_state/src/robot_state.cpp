@@ -1040,15 +1040,22 @@ const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id,
                     frame_id.c_str(), robot_model_->getModelFrame().c_str(), frame_id.c_str());
   }
 
-  // Check if frame is in subframes of the AttachedBody objects
-  for (std::pair<std::string, AttachedBody*> body : attached_body_map_)  // Check if an AttachedBody has a subframe with name frame_id
+  // If frame_id contains a separating slash, look through subframes of the AttachedBody objects
+  if (frame_id.find("/")!=std::string::npos)
   {
-    if (body.second->hasSubframeTransform(frame_id))
+    for (std::pair<std::string, AttachedBody*> body : attached_body_map_)  // Check if an AttachedBody has a subframe with name frame_id
     {
-      robot_link = body.second->getAttachedLink();
-      frame_found = true;
-      return body.second->getSubframeTransform(frame_id);
+      if (body.second->hasSubframeTransform(frame_id))
+      {
+        robot_link = body.second->getAttachedLink();
+        frame_found = true;
+        return body.second->getSubframeTransform(frame_id);
+      }
     }
+  }
+  else
+  {
+    ROS_ERROR_NAMED(LOGNAME, "Frame name contains a slash, but does not refer to a subframe!");
   }
   
   const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
