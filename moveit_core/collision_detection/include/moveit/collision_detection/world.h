@@ -47,6 +47,7 @@
 #include <boost/function.hpp>
 #include <Eigen/Geometry>
 #include <eigen_stl_containers/eigen_stl_vector_container.h>
+#include <moveit/transforms/transforms.h>
 
 namespace shapes
 {
@@ -111,7 +112,7 @@ public:
      *  Use these to define points of interest on the object to plan with
      *  (e.g. screwdriver_tip, kettle_spout, mug_base).
      * */
-    std::map<std::string, Eigen::Isometry3d> subframe_poses_;
+    moveit::core::FixedTransformsMap subframe_poses_;
   };
 
   /** \brief Get the list of Object ids */
@@ -205,6 +206,10 @@ public:
   /** \brief Set subframes on an object. */
   bool setSubframesOfObject(const std::string& object_id,
                               const std::map<std::string, Eigen::Isometry3d>& subframe_poses);
+
+  /** \brief Set subframes on an object. */
+  bool setSubframesOfObject(const std::string& object_id,
+                              const moveit::core::FixedTransformsMap& subframe_poses);
 
   /** \brief Clear all objects.
    * If there are no other pointers to corresponding instances of Objects,

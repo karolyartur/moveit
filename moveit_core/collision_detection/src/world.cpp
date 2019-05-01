@@ -149,7 +149,7 @@ bool World::knowsTransform(const std::string& object_id) const
       {
         // Strip the object's name that should be prepended to the requested frame
         int name_length = object.second->id_.length();
-        if ("/" == object_id.substr(name_length, name_length+1))
+        if ("/" == object_id.substr(name_length, 1))
           if (object.second->id_ == object_id.substr(0,name_length))
           {
             if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
@@ -176,7 +176,7 @@ const Eigen::Isometry3d& World::getTransform(const std::string& object_id) const
       {
         // Strip the object's name that should be prepended to the requested frame
         int name_length = object.second->id_.length();
-        if ("/" == object_id.substr(name_length, name_length+1))
+        if ("/" == object_id.substr(name_length, 1))
           if (object.second->id_ == object_id.substr(0,name_length))
           {
             if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
@@ -203,7 +203,7 @@ const Eigen::Isometry3d& World::getTransform(const std::string& object_id, bool&
       {
         // Strip the object's name that should be prepended to the requested frame
         int name_length = object.second->id_.length();
-        if ("/" == object_id.substr(name_length, name_length+1))
+        if ("/" == object_id.substr(name_length, 1))
           if (object.second->id_ == object_id.substr(0,name_length))
           {
             if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
@@ -317,6 +317,22 @@ void World::clearObjects()
 
 bool World::setSubframesOfObject(const std::string& object_id,
                                    const std::map<std::string, Eigen::Isometry3d>& subframe_poses)
+{
+  auto obj_pair = objects_.find(object_id);
+  if (obj_pair == objects_.end())
+  {
+    return false;
+  }
+  obj_pair->second->subframe_poses_.clear();
+  for (const std::pair<std::string, Eigen::Isometry3d>& subframe : subframe_poses)
+  {
+    obj_pair->second->subframe_poses_.insert(subframe);
+  }
+  return true;
+}
+
+bool World::setSubframesOfObject(const std::string& object_id,
+                                   const moveit::core::FixedTransformsMap& subframe_poses)
 {
   auto obj_pair = objects_.find(object_id);
   if (obj_pair == objects_.end())
