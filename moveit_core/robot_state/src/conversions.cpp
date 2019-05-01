@@ -293,7 +293,7 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
           }
         }
 
-        std::map<std::string, Eigen::Isometry3d> subframe_poses;
+        moveit::core::FixedTransformsMap subframe_poses;
         for (std::size_t i = 0; i < aco.object.subframe_poses.size(); ++i)
         {
           Eigen::Isometry3d p;
