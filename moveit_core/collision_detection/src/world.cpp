@@ -143,20 +143,22 @@ bool World::knowsTransform(const std::string& object_id) const
     return true;
   else  // Then objects' subframes
   {
-    for (const std::pair<std::string, ObjectPtr>& object : objects_)
+    if (object_id.find("/")!=std::string::npos)
     {
-      try 
+      for (const std::pair<std::string, ObjectPtr>& object : objects_)
       {
-        // Strip the object's name that should be prepended to the requested frame
-        int name_length = object.second->id_.length();
-        if ("/" == object_id.substr(name_length, 1))
+        try 
+        {
+          // Compare both object name and subframe name
+          int name_length = object.second->id_.length();
           if (object.second->id_ == object_id.substr(0,name_length))
           {
             if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
               return true;
           }
+        }
+        catch (const std::exception& e) {;}
       }
-      catch (const std::exception& e) {;}
     }
   }
   return false;
@@ -170,20 +172,22 @@ const Eigen::Isometry3d& World::getTransform(const std::string& object_id) const
     return it->second->shape_poses_[0];
   else  // Find within subframes
   {
-    for (const std::pair<std::string, ObjectPtr>& object : objects_)
+    if (object_id.find("/")!=std::string::npos)
     {
-      try 
+      for (const std::pair<std::string, ObjectPtr>& object : objects_)
       {
-        // Strip the object's name that should be prepended to the requested frame
-        int name_length = object.second->id_.length();
-        if ("/" == object_id.substr(name_length, 1))
+        try 
+        {
+          // Compare both object name and subframe name
+          int name_length = object.second->id_.length();
           if (object.second->id_ == object_id.substr(0,name_length))
           {
             if (object.second->subframe_poses_.find(object_id.substr(name_length+1)) != object.second->subframe_poses_.end())
               return object.second->subframe_poses_[object_id.substr(name_length+1)];
           }
+        }
+        catch (const std::exception& e) {;}
       }
-      catch (const std::exception& e) {;}
     }
   }
   throw std::runtime_error("No transform found for object_id: " + object_id);
