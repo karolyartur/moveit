@@ -214,6 +214,6 @@ bool constructConstraints(XmlRpc::XmlRpcValue& params, moveit_msgs::Constraints&
  * @param [in] state The pointer to the state from which to generate goal joint constraints
  * @param [in] c The constraint message to be validated (modified directly).
  */
-bool validateConstraintFrames(const robot_state::RobotState& state, moveit_msgs::Constraints& c);
+bool validateConstraintFrames(const robot_state::RobotState& state, moveit_msgs::Constraints& constraints);
 }
 #endif

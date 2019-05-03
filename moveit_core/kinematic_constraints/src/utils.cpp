@@ -529,55 +529,54 @@ bool constructConstraints(XmlRpc::XmlRpcValue& params, moveit_msgs::Constraints&
 }
 }  // namespace kinematic_constraints
 
-bool kinematic_constraints::validateConstraintFrames(const robot_state::RobotState& state, moveit_msgs::Constraints& c)
+bool kinematic_constraints::validateConstraintFrames(const robot_state::RobotState& state,
+                                                     moveit_msgs::Constraints& constraints)
 {
-  for (auto& pos_con_it : c.position_constraints)
+  for (auto& c : constraints.position_constraints)
   {
     bool frame_found;
     const moveit::core::LinkModel* robot_link;
-    const Eigen::Isometry3d& transform = state.getFrameInfo(pos_con_it.link_name, robot_link, frame_found);
+    const Eigen::Isometry3d& transform = state.getFrameInfo(c.link_name, robot_link, frame_found);
     if (!frame_found)
       return false;
 
     // If the frame of the constraint is not part of the robot link model (but is an
     // attached body or subframe instead), the constraint needs to be expressed in
     // the frame of a robot link.
-    if (pos_con_it.link_name != robot_link->getName())
+    if (c.link_name != robot_link->getName())
     {
       Eigen::Vector3d pos_in_link_frame,
-          pos_in_original_frame(pos_con_it.target_point_offset.x, pos_con_it.target_point_offset.y,
-                                pos_con_it.target_point_offset.z);
+          pos_in_original_frame(c.target_point_offset.x, c.target_point_offset.y, c.target_point_offset.z);
 
       pos_in_link_frame = transform * pos_in_original_frame;
-      pos_con_it.link_name = robot_link->getName();
-      pos_con_it.target_point_offset.x = pos_in_link_frame[0];
-      pos_con_it.target_point_offset.y = pos_in_link_frame[1];
-      pos_con_it.target_point_offset.z = pos_in_link_frame[2];
+      c.link_name = robot_link->getName();
+      c.target_point_offset.x = pos_in_link_frame[0];
+      c.target_point_offset.y = pos_in_link_frame[1];
+      c.target_point_offset.z = pos_in_link_frame[2];
     }
   }
-  for (auto& ori_con_it : c.orientation_constraints)
+  for (auto& c : constraints.orientation_constraints)
   {
     bool frame_found;
     const moveit::core::LinkModel* robot_link;
-    const Eigen::Isometry3d& transform = state.getFrameInfo(ori_con_it.link_name, robot_link, frame_found);
+    const Eigen::Isometry3d& transform = state.getFrameInfo(c.link_name, robot_link, frame_found);
     if (!frame_found)
       return false;
 
     // If the frame of the constraint is not part of the robot link model (but is an
     // attached body or subframe instead), the constraint needs to be expressed in
     // the frame of a robot link.
-    if (ori_con_it.link_name != robot_link->getName())
+    if (c.link_name != robot_link->getName())
     {
       Eigen::Quaterniond q_body_to_link(transform.inverse().rotation());
-      Eigen::Quaterniond q_target(ori_con_it.orientation.w, ori_con_it.orientation.x, ori_con_it.orientation.y,
-                                  ori_con_it.orientation.z);
+      Eigen::Quaterniond q_target(c.orientation.w, c.orientation.x, c.orientation.y, c.orientation.z);
       Eigen::Quaterniond q_in_link = q_body_to_link * q_target;
 
-      ori_con_it.link_name = robot_link->getName();
-      ori_con_it.orientation.x = q_in_link.x();
-      ori_con_it.orientation.y = q_in_link.y();
-      ori_con_it.orientation.z = q_in_link.z();
-      ori_con_it.orientation.w = q_in_link.w();
+      c.link_name = robot_link->getName();
+      c.orientation.x = q_in_link.x();
+      c.orientation.y = q_in_link.y();
+      c.orientation.z = q_in_link.z();
+      c.orientation.w = q_in_link.w();
     }
   }
   return true;
