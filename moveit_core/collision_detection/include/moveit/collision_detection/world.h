@@ -41,7 +41,6 @@
 
 #include <string>
 #include <vector>
-#include <set>
 #include <map>
 #include <memory>
 #include <boost/function.hpp>
@@ -108,10 +107,10 @@ public:
      * @copydetails shapes_ */
     EigenSTL::vector_Isometry3d shape_poses_;
 
-    /** \brief Transforms to subframes on the object. Transforms are applied to the link.
-     *  Use these to define points of interest on the object to plan with
-     *  (e.g. screwdriver_tip, kettle_spout, mug_base).
-     * */
+    /** \brief Transforms to subframes on the object.
+     *  Use them to define points of interest on an object to plan with
+     *  (e.g. screwdriver/tip, kettle/spout, mug/base).
+     */
     moveit::core::FixedTransformsMap subframe_poses_;
   };
 
@@ -147,18 +146,19 @@ public:
   /** \brief Check if a particular object exists in the collision world*/
   bool hasObject(const std::string& object_id) const;
 
-  /** \brief Check if a subframe or object with name object_id exists in the collision world. 
-   * Subframe name has to have the object's name prepended with a slash.
-  */
-  bool knowsTransform(const std::string& object_id) const;
+  /** \brief Check if an object or subframe with given name exists in the collision world.
+   * A subframe name needs to be prefixed with the object's name separated by a slash. */
+  bool knowsTransform(const std::string& name) const;
 
-  /** \brief Get the transform to a subframe or object with name object_id. If object_id does not exist, this function
-   * throws a std::runtime_error. Subframe name has to have the object's name prepended with a slash.*/
-  const Eigen::Isometry3d& getTransform(const std::string& object_id) const;
+  /** \brief Get the transform to an object or subframe with given name.
+   * If name does not exist, a std::runtime_error is thrown.
+   * A subframe name needs to be prefixed with the object's name separated by a slash. */
+  const Eigen::Isometry3d& getTransform(const std::string& name) const;
 
-  /** \brief Get the transform to a subframe or object with name object_id. If object_id does not exist, this function
-   * returns an identity transform and sets frame_found to false. This combines knowsTransform and getTransform.*/
-  const Eigen::Isometry3d& getTransform(const std::string& object_id, bool& frame_found) const;
+  /** \brief Get the transform to an object or subframe with given name.
+   * If name does not exist, returns an identity transform and sets frame_found to false.
+   * A subframe name needs to be prefixed with the object's name separated by a slash. */
+  const Eigen::Isometry3d& getTransform(const std::string& name, bool& frame_found) const;
 
   /** \brief Add shapes to an object in the map.
    * This function makes repeated calls to addToObjectInternal() to add the
@@ -182,13 +182,6 @@ public:
   /** \brief Move all shapes in an object according to the given transform specified in world frame */
   bool moveObject(const std::string& object_id, const Eigen::Isometry3d& transform);
 
-  /** \brief Replaces all shapes in an existing object.
-   * If the object already exists, this call will assign the new shapes to the object
-   * at the specified pose. Otherwise, the object is created and the
-   * specified shape is added. This calls addToObjectInternal(). */
-  bool replaceShapesInObject(const std::string& object_id, const std::vector<shapes::ShapeConstPtr>& shapes,
-                             const EigenSTL::vector_Isometry3d& poses);
-
   /** \brief Remove shape from object.
    * Shape equality is verified by comparing pointers. Ownership of the
    * object is renounced (i.e. object is deleted if no external references
@@ -204,12 +197,7 @@ public:
   bool removeObject(const std::string& object_id);
 
   /** \brief Set subframes on an object. */
-  bool setSubframesOfObject(const std::string& object_id,
-                              const std::map<std::string, Eigen::Isometry3d>& subframe_poses);
-
-  /** \brief Set subframes on an object. */
-  bool setSubframesOfObject(const std::string& object_id,
-                              const moveit::core::FixedTransformsMap& subframe_poses);
+  bool setSubframesOfObject(const std::string& object_id, const moveit::core::FixedTransformsMap& subframe_poses);
 
   /** \brief Clear all objects.
    * If there are no other pointers to corresponding instances of Objects,
