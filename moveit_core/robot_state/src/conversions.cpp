@@ -293,7 +293,7 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
           }
         }
 
-        std::map<std::string, Eigen::Isometry3d> subframe_poses;
+        moveit::core::FixedTransformsMap subframe_poses;
         for (std::size_t i = 0; i < aco.object.subframe_poses.size(); ++i)
         {
           Eigen::Isometry3d p;
@@ -324,7 +324,7 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
           for (Eigen::Isometry3d& pose : poses)
             pose = t * pose;
           // TODO (felixvd): Make the two lines below explicit and prettier
-          for (auto & subframe_pose : subframe_poses)
+          for (auto& subframe_pose : subframe_poses)
             subframe_pose.second = t * subframe_pose.second;
         }
 
