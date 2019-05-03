@@ -1556,12 +1556,11 @@ as the new values that correspond to the group */
    * from a planning_scene::PlanningScene), you will likely need to remove the
    * corresponding object from that world to avoid having collisions
    * detected against it. */
-  void attachBody(
-      const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
-      const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
-      const std::string& link_name,
-      const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
-      const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap());
+  void attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
+                  const EigenSTL::vector_Isometry3d& shape_poses, const std::set<std::string>& touch_links,
+                  const std::string& link_name,
+                  const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
+                  const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap());
 
   /** @brief Add an attached body to a link
    * @param id The string id associated with the attached body
@@ -1579,15 +1578,14 @@ as the new values that correspond to the group */
    * from a planning_scene::PlanningScene), you will likely need to remove the
    * corresponding object from that world to avoid having collisions
    * detected against it. */
-  void attachBody(
-      const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
-      const EigenSTL::vector_Isometry3d& attach_trans, const std::vector<std::string>& touch_links,
-      const std::string& link_name,
-      const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
-      const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap())
+  void attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
+                  const EigenSTL::vector_Isometry3d& shape_poses, const std::vector<std::string>& touch_links,
+                  const std::string& link_name,
+                  const trajectory_msgs::JointTrajectory& detach_posture = trajectory_msgs::JointTrajectory(),
+                  const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap())
   {
     std::set<std::string> touch_links_set(touch_links.begin(), touch_links.end());
-    attachBody(id, shapes, attach_trans, touch_links_set, link_name, detach_posture, subframe_poses);
+    attachBody(id, shapes, shape_poses, touch_links_set, link_name, detach_posture, subframe_poses);
   }
 
   /** \brief Get all bodies attached to the model corresponding to this state */

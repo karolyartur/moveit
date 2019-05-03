@@ -887,16 +887,12 @@ void RobotState::attachBody(AttachedBody* attached_body)
 }
 
 void RobotState::attachBody(const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
-                            const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
+                            const EigenSTL::vector_Isometry3d& shape_poses, const std::set<std::string>& touch_links,
                             const std::string& link, const trajectory_msgs::JointTrajectory& detach_posture,
                             const moveit::core::FixedTransformsMap& subframe_poses)
 {
   const LinkModel* l = robot_model_->getLinkModel(link);
-  AttachedBody* body = new AttachedBody(l, id, shapes, attach_trans, touch_links, detach_posture, subframe_poses);
-  attached_body_map_[id] = body;
-  body->computeTransform(getGlobalLinkTransform(l));
-  if (attached_body_update_callback_)
-    attached_body_update_callback_(body, true);
+  attachBody(new AttachedBody(l, id, shapes, shape_poses, touch_links, detach_posture, subframe_poses));
 }
 
 void RobotState::getAttachedBodies(std::vector<const AttachedBody*>& attached_bodies) const
@@ -1000,64 +996,46 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
   BOOST_VERIFY(checkLinkTransforms());
 
   static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
-  // Check if frame is in robot links
   if (frame_id == robot_model_->getModelFrame())
     return IDENTITY_TRANSFORM;
+  // Check if frame is in robot links
   if (robot_model_->hasLinkModel(frame_id))
   {
     const LinkModel* lm = robot_model_->getLinkModel(frame_id);
     return global_link_transforms_[lm->getLinkIndex()];
   }
 
-  // Check names of the AttachedBody objects themselves
+  // Check names of the attached bodies
   std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(frame_id);
-  if (jt == attached_body_map_.end())
+  if (jt != attached_body_map_.end())
   {
-    ROS_ERROR_NAMED(LOGNAME, "Transform from frame '%s' to frame '%s' is not known "
-                             "('%s' should be a link name or an attached body's id).",
-    ROS_DEBUG_NAMED(LOGNAME,
-                    "Transform from frame '%s' to frame '%s' is not known to the robot state "
-                    "('%s' should be a link name, an attached body, or the name of an attached body's subframe).",
-                    frame_id.c_str(), robot_model_->getModelFrame().c_str(), frame_id.c_str());
-  }
-
-  // If frame_id contains a separating slash, look through subframes of the AttachedBody objects
-  if (frame_id.find("/")!=std::string::npos)
-  {
-    for (std::pair<std::string, AttachedBody*> body : attached_body_map_)  // Check if an AttachedBody has a subframe with name frame_id
+    const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
+    if (tf.empty())
     {
-      if (body.second->hasSubframeTransform(frame_id))
-      {
-        robot_link = body.second->getAttachedLink();
-        frame_found = true;
-        return body.second->getSubframeTransform(frame_id);
-      }
+      ROS_ERROR_NAMED(LOGNAME, "Attached body '%s' has no geometry associated to it. No transform to return.",
+                      frame_id.c_str());
+      return IDENTITY_TRANSFORM;
     }
-  }
-  else
-  {
-    ROS_ERROR_NAMED(LOGNAME, "Frame name contains a slash, but does not refer to a subframe!");
-  }
-  
-  const EigenSTL::vector_Isometry3d& tf = jt->second->getGlobalCollisionBodyTransforms();
-  if (tf.empty())
-  {
-    ROS_DEBUG_NAMED(LOGNAME, "'%s' is the name of an AttachedBody, but it has no geometry associated to it. No "
-                             "transform to return.",
-                    frame_id.c_str());
-    return IDENTITY_TRANSFORM;
-  }
-  if (tf.size() > 1)
-  {
-    ROS_DEBUG_NAMED(LOGNAME, "There are multiple geometries associated to attached body '%s'. "
-                             "Returning the transform for the first one.",
-                    frame_id.c_str());
+    if (tf.size() > 1)
+      ROS_DEBUG_NAMED(LOGNAME, "There are multiple geometries associated to attached body '%s'. "
+                               "Returning the transform for the first one.",
+                      frame_id.c_str());
     return tf[0];
   }
 
-  ROS_DEBUG_NAMED(LOGNAME, "robotState getFrameTransform did not find a frame with name %s.", frame_id);
+  // Check if an AttachedBody has a subframe with name frame_id
+  for (const std::pair<std::string, AttachedBody*>& body : attached_body_map_)
+  {
+    bool found;
+    const auto& transform = body.second->getSubframeTransform(frame_id, &found);
+    if (found)
+      return transform;
+  }
+
+  ROS_DEBUG_NAMED(LOGNAME, "getFrameTransform() did not find a frame with name %s.", frame_id);
   return IDENTITY_TRANSFORM;
 }
+
 bool RobotState::knowsFrameTransform(const std::string& frame_id) const
 {
   if (!frame_id.empty() && frame_id[0] == '/')
@@ -1065,15 +1043,17 @@ bool RobotState::knowsFrameTransform(const std::string& frame_id) const
   if (robot_model_->hasLinkModel(frame_id))
     return true;
 
-  for (std::pair<std::string, AttachedBody*> body : attached_body_map_)  // Check if an AttachedBody has a subframe with name frame_id
+  // Check if an AttachedBody with name frame_id exists
+  std::map<std::string, AttachedBody*>::const_iterator it = attached_body_map_.find(frame_id);
+  if (it != attached_body_map_.end())
+    return !it->second->getGlobalCollisionBodyTransforms().empty();
+
+  // Check if an AttachedBody has a subframe with name frame_id
+  for (const std::pair<std::string, AttachedBody*>& body : attached_body_map_)
   {
     if (body.second->hasSubframeTransform(frame_id))
       return true;
   }
-
-  // Check if an AttachedBody with name frame_id exists
-  std::map<std::string, AttachedBody*>::const_iterator it = attached_body_map_.find(frame_id);
-  return it != attached_body_map_.end() && !it->second->getGlobalCollisionBodyTransforms().empty();
 }
 
 void RobotState::getRobotMarkers(visualization_msgs::MarkerArray& arr, const std::vector<std::string>& link_names,
