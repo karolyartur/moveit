@@ -286,10 +286,10 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
 
         // transform poses to link frame
         if (!Transforms::sameFrame(aco.object.header.frame_id, aco.link_name))
-        {          
+        {
           bool frame_found = false;
           Eigen::Isometry3d t0;
-          t0 = state.getFrameTransform(aco.object.header.frame_id, frame_found);
+          t0 = state.getFrameTransform(aco.object.header.frame_id, &frame_found);
           if (!frame_found)
           {
             if (tf && tf->canTransform(aco.object.header.frame_id))
@@ -298,7 +298,7 @@ static void _msgToAttachedBody(const Transforms* tf, const moveit_msgs::Attached
             {
               t0.setIdentity();
               ROS_ERROR_NAMED(LOGNAME, "Cannot properly transform from frame '%s'. "
-                                      "The pose of the attached body may be incorrect",
+                                       "The pose of the attached body may be incorrect",
                               aco.object.header.frame_id.c_str());
             }
           }
