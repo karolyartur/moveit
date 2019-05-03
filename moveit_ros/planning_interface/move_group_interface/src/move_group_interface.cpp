@@ -402,10 +402,11 @@ public:
                                                moveit::core::GroupStateValidityCallbackFn(), o);
       else
       {
-        if (c->knowsFrameTransform(frame))
+        bool frame_found = false;
+        Eigen::Isometry3d t = getTargetRobotState().getFrameTransform(frame, frame_found);
+        if (frame_found)
         {
           // transform the pose first if possible, then do IK
-          const Eigen::Isometry3d& t = getTargetRobotState().getFrameTransform(frame);
           Eigen::Isometry3d p;
           tf2::fromMsg(eef_pose, p);
           return getTargetRobotState().setFromIK(getJointModelGroup(), t * p, eef, 0.0,

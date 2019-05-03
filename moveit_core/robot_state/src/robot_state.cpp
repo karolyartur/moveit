@@ -991,17 +991,35 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
 
 const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id) const
 {
+  bool ignored_value;
+  return getFrameTransform(frame_id, ignored_value);
+}
+
+const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_id, bool& frame_found) const
+{
+  const LinkModel* ignored_output;
+  return getFrameInfo(frame_id, ignored_output, frame_found);
+}
+
+const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id,
+                                    const LinkModel* &robot_link, bool& frame_found) const
+{
   if (!frame_id.empty() && frame_id[0] == '/')
-    return getFrameTransform(frame_id.substr(1));
+    return getFrameInfo(frame_id.substr(1), robot_link, frame_found);
   BOOST_VERIFY(checkLinkTransforms());
 
   static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
   if (frame_id == robot_model_->getModelFrame())
+  {
+    robot_link = robot_model_->getRootLink();
+    frame_found = true;
     return IDENTITY_TRANSFORM;
-  // Check if frame is in robot links
+  }
   if (robot_model_->hasLinkModel(frame_id))
   {
     const LinkModel* lm = robot_model_->getLinkModel(frame_id);
+    robot_link = robot_model_->getLinkModel(frame_id);
+    frame_found = true;
     return global_link_transforms_[lm->getLinkIndex()];
   }
 
@@ -1014,6 +1032,7 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
     {
       ROS_ERROR_NAMED(LOGNAME, "Attached body '%s' has no geometry associated to it. No transform to return.",
                       frame_id.c_str());
+      frame_found = false;
       return IDENTITY_TRANSFORM;
     }
     if (tf.size() > 1)
@@ -1033,6 +1052,7 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
   }
 
   ROS_DEBUG_NAMED(LOGNAME, "getFrameTransform() did not find a frame with name %s.", frame_id);
+  frame_found = false;
   return IDENTITY_TRANSFORM;
 }
 
