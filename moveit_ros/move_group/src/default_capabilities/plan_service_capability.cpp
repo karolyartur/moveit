@@ -58,6 +58,10 @@ bool move_group::MoveGroupPlanService::computePlanService(moveit_msgs::GetMotion
   context_->planning_scene_monitor_->updateFrameTransforms();
 
   planning_scene_monitor::LockedPlanningSceneRO ps(context_->planning_scene_monitor_);
+  
+  robot_state::RobotState rs = ps->getCurrentState();
+  ROS_DEBUG_NAMED(LOGNAME, "Transforming constraints to robot link (if necessary)");
+  kinematic_constraints::validateConstraintFrames(rs, req.constraints);
   try
   {
     planning_interface::MotionPlanResponse mp_res;

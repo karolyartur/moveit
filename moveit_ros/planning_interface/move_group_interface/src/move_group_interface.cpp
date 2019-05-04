@@ -59,7 +59,6 @@
 #include <moveit_msgs/GraspPlanning.h>
 #include <moveit_msgs/GetPlannerParams.h>
 #include <moveit_msgs/SetPlannerParams.h>
-#include <moveit_msgs/ValidateConstraintFrames.h>
 
 #include <std_msgs/String.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -167,8 +166,6 @@ public:
         node_handle_.serviceClient<moveit_msgs::GetPlannerParams>(move_group::GET_PLANNER_PARAMS_SERVICE_NAME);
     set_params_service_ =
         node_handle_.serviceClient<moveit_msgs::SetPlannerParams>(move_group::SET_PLANNER_PARAMS_SERVICE_NAME);
-    validate_constraints_service_ =
-        node_handle_.serviceClient<moveit_msgs::ValidateConstraintFrames>(move_group::CONSTRAINT_VALIDITY_SERVICE_NAME);
 
     cartesian_path_service_ =
         node_handle_.serviceClient<moveit_msgs::GetCartesianPath>(move_group::CARTESIAN_PATH_SERVICE_NAME);
@@ -1164,18 +1161,12 @@ public:
 
   bool validateConstraintFrames(moveit_msgs::Constraints& constraints)
   {
-    moveit_msgs::ValidateConstraintFrames::Request req;
-    req.constraints = constraints;
-    moveit_msgs::ValidateConstraintFrames::Response res;
-    if (validate_constraints_service_.call(req, res))
-    {
-      if (res.valid)
-      {
-        constraints = res.constraints;
-        return true;
-      }
-    }
-    return false;
+    robot_state::RobotState rs = current_state_monitor_->getCurrentState();
+
+    ROS_DEBUG_NAMED(LOGNAME, "Transforming constraints to robot link (if necessary)");
+    // Checks if the goal is defined either for existing link_names or the names of AttachedBody objects
+    // that are attached to the robot. The latter are transformed to link_names so the planner can deal with them.
+    return kinematic_constraints::validateConstraintFrames(rs, constraints);
   }
 
   std::vector<std::string> getKnownConstraints() const
