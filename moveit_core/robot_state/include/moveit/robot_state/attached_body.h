@@ -64,7 +64,7 @@ public:
   AttachedBody(const LinkModel* link, const std::string& id, const std::vector<shapes::ShapeConstPtr>& shapes,
                const EigenSTL::vector_Isometry3d& attach_trans, const std::set<std::string>& touch_links,
                const trajectory_msgs::JointTrajectory& attach_posture,
-               const moveit::core::FixedTransformsMap& subframe_poses);
+               const moveit::core::FixedTransformsMap& subframe_poses = moveit::core::FixedTransformsMap());
 
   ~AttachedBody();
 
