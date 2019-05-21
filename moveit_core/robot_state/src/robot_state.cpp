@@ -1032,7 +1032,7 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
       return transform;
   }
 
-  ROS_DEBUG_NAMED(LOGNAME, "getFrameTransform() did not find a frame with name %s.", frame_id);
+  ROS_DEBUG_NAMED(LOGNAME, "getFrameTransform() did not find a frame with name %s.", frame_id.c_str());
   return IDENTITY_TRANSFORM;
 }
 
