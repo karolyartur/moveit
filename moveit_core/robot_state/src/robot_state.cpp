@@ -1008,7 +1008,6 @@ const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id, c
 {
   if (!frame_id.empty() && frame_id[0] == '/')
     return getFrameInfo(frame_id.substr(1), robot_link, frame_found);
-  BOOST_VERIFY(checkLinkTransforms());
 
   static const Eigen::Isometry3d IDENTITY_TRANSFORM = Eigen::Isometry3d::Identity();
   if (frame_id == robot_model_->getModelFrame())
@@ -1017,12 +1016,13 @@ const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id, c
     frame_found = true;
     return IDENTITY_TRANSFORM;
   }
-  if (robot_model_->hasLinkModel(frame_id))
+  if (robot_link = robot_model_->getLinkModel(frame_id))
   {
-    robot_link = robot_model_->getLinkModel(frame_id);
     frame_found = true;
+    BOOST_VERIFY(checkLinkTransforms());
     return global_link_transforms_[robot_link->getLinkIndex()];
   }
+  robot_link = nullptr;
 
   // Check names of the attached bodies
   std::map<std::string, AttachedBody*>::const_iterator jt = attached_body_map_.find(frame_id);
@@ -1043,6 +1043,7 @@ const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id, c
                       frame_id.c_str());
     robot_link = jt->second->getAttachedLink();
     frame_found = true;
+    BOOST_VERIFY(checkLinkTransforms());
     return tf[0];
   }
 
@@ -1053,6 +1054,7 @@ const Eigen::Isometry3d& RobotState::getFrameInfo(const std::string& frame_id, c
     if (frame_found)
     {
       robot_link = body.second->getAttachedLink();
+      BOOST_VERIFY(checkLinkTransforms());
       return transform;
     }
   }
