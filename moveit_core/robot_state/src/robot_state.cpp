@@ -997,7 +997,7 @@ const Eigen::Isometry3d& RobotState::getFrameTransform(const std::string& frame_
 
   if (frame_found)
     *frame_found = found;
-  else
+  else if (!found)
     ROS_WARN_NAMED(LOGNAME, "getFrameTransform() did not find a frame with name %s.", frame_id.c_str());
 
   return result;
