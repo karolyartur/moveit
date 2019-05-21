@@ -140,8 +140,10 @@ bool World::hasObject(const std::string& object_id) const
 bool World::knowsTransform(const std::string& name) const
 {
   // Check object names first
-  if (objects_.find(name) != objects_.end())
-    return true;
+  std::map<std::string, ObjectPtr>::const_iterator it = objects_.find(name);
+  if (it != objects_.end())
+    // only accept object name as frame if it is associated to a unique shape
+    return it->second->shape_poses_.size() == 1;
   else  // Then objects' subframes
   {
     for (const std::pair<std::string, ObjectPtr>& object : objects_)
