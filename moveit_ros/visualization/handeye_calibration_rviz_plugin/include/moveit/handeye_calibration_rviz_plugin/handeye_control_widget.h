@@ -51,6 +51,7 @@
 
 // ros
 #include <tf2_eigen/tf2_eigen.h>
+#include <pluginlib/class_loader.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <rviz_visual_tools/tf_visual_tools.h>
 #include <moveit/handeye_calibration_solver/handeye_solver_base.h>
@@ -73,6 +74,8 @@ public:
   ~ControlTabWidget()
   {
     tf_tools_.reset();
+    solver_.reset();
+    solver_plugins_loader_.reset();
   }
 
   void loadWidget(const rviz::Config& config);
@@ -83,6 +86,12 @@ public:
   void addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, 
                                const geometry_msgs::TransformStamped& bTe, int id);
 
+  bool loadSolverPlugin(std::vector<std::string>& plugins);
+
+  bool createSolverInstance(const std::string& plugin_name);
+
+  void fillSolverTypes(const std::vector<std::string>& plugins);
+
 public Q_SLOTS:
 
   void UpdateSensorMountType(int index);
@@ -92,6 +101,8 @@ public Q_SLOTS:
 private Q_SLOTS:
 
   void takeSampleBtnClicked(bool clicked);
+
+  void resetSampleBtnClicked(bool clicked);
 
 private:
 
@@ -137,6 +148,10 @@ private:
   tf2_ros::TransformListener tf_listener_;
 
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
+
+  std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase> > solver_plugins_loader_;
+
+  pluginlib::UniquePtr<moveit_handeye_calibration::HandEyeSolverBase> solver_;
 };
 
 } // namespace moveit_rviz_plugin

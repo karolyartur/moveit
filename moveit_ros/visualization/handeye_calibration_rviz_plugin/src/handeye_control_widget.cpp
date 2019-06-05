@@ -38,8 +38,13 @@
 
 namespace moveit_rviz_plugin
 {
+const std::string LOGNAME = "handeye_control_widget";
+
 ControlTabWidget::ControlTabWidget(QWidget* parent)
-  : QWidget(parent), tf_listener_(tf_buffer_), sensor_mount_type_(mhc::EYE_TO_HAND)
+  : QWidget(parent), 
+    tf_listener_(tf_buffer_), 
+    sensor_mount_type_(mhc::EYE_TO_HAND),
+    solver_(nullptr)
 {
   QVBoxLayout* layout = new QVBoxLayout();
   this->setLayout(layout);
@@ -102,6 +107,7 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
 
   reset_sample_btn_ = new QPushButton("Reset Sample");
   reset_sample_btn_->setFixedHeight(50);
+  connect(reset_sample_btn_, SIGNAL(clicked(bool)), this, SLOT(resetSampleBtnClicked(bool)));
   control_cal_layout->addWidget(reset_sample_btn_);
 
   // Auto calibration area
@@ -124,6 +130,10 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   skip_robot_state_btn_->setFixedHeight(50);
   skip_robot_state_btn_->setToolTip("Skip the current robot state target");
   auto_cal_layout->addWidget(skip_robot_state_btn_);
+
+  std::vector<std::string> plugins;
+  if (loadSolverPlugin(plugins))
+    fillSolverTypes(plugins); 
 }
 
 void ControlTabWidget::loadWidget(const rviz::Config& config)
@@ -134,6 +144,63 @@ void ControlTabWidget::loadWidget(const rviz::Config& config)
 void ControlTabWidget::saveWidget(rviz::Config& config)
 {
 
+}
+
+bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
+{
+  if (!solver_plugins_loader_)
+  {
+    try
+    {
+      solver_plugins_loader_.reset(
+          new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase>("moveit_ros_perception", 
+                                                                "moveit_handeye_calibration::HandEyeSolverBase"));
+    }
+    catch (pluginlib::PluginlibException& ex)
+    {
+      QMessageBox::warning(this, tr("Exception while creating handeye solver plugin loader "),
+                                     tr(ex.what()));
+      return false;
+    }
+  }
+
+  // Get available plugins
+  plugins = solver_plugins_loader_->getDeclaredClasses();
+  return !plugins.empty();
+}
+
+bool ControlTabWidget::createSolverInstance(const std::string& plugin_name)
+{
+  if (plugin_name.empty())
+    return false;
+
+  try
+  {
+    solver_ = solver_plugins_loader_->createUniqueInstance(plugin_name);
+    solver_->initialize();
+  }
+  catch (pluginlib::PluginlibException& ex)
+  {
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Exception while loading handeye solver plugin: " << plugin_name << ex.what());
+    solver_ = nullptr;
+    return false;
+  }
+
+  return true;
+}
+
+void ControlTabWidget::fillSolverTypes(const std::vector<std::string>& plugins)
+{
+  for (const std::string& plugin: plugins)
+    if (createSolverInstance(plugin))
+    {
+      std::vector<std::string>& solvers = solver_->getSolverNames();
+      for (const std::string& solver: solvers)
+      {
+        std::string solver_name = plugin + "/" + solver;
+          calibration_solver_->addItem(tr(solver_name.c_str()));
+      }
+    }
 }
 
 void ControlTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
@@ -180,6 +247,11 @@ void ControlTabWidget::updateFrameNames(std::map<std::string, std::string> names
 
 void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 {
+  effector_wrt_world_.push_back(Eigen::Isometry3d::Identity());
+  object_wrt_sensor_.push_back(Eigen::Isometry3d::Identity());
+  solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_);
+  return;
+
   if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
      frame_names_["base"].empty() || frame_names_["eef"].empty())
   {
@@ -187,28 +259,34 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
     return;
   }
 
-  geometry_msgs::TransformStamped cTo;
-  geometry_msgs::TransformStamped bTe;
-  
   try
   {
+    geometry_msgs::TransformStamped cTo;
+    geometry_msgs::TransformStamped bTe;
+
     // Get the transform of the object w.r.t the camera
     cTo = tf_buffer_.lookupTransform(frame_names_["sensor"], frame_names_["object"], ros::Time(0));
 
     // Get the transform of the end-effector w.r.t the robot base
     bTe = tf_buffer_.lookupTransform(frame_names_["base"], frame_names_["eef"], ros::Time(0));
+
+    // save the pose samples
+    effector_wrt_world_.push_back(tf2::transformToEigen(bTe));
+    object_wrt_sensor_.push_back(tf2::transformToEigen(cTo));
+
+    ControlTabWidget::addPoseSampleToTreeView(cTo, bTe, effector_wrt_world_.size());
   }
   catch (tf2::TransformException& e)
   {
     ROS_WARN("TF exception: %s", e.what());
-    return;
   }
+}
 
-  // save the pose samples
-  effector_wrt_world_.push_back(tf2::transformToEigen(bTe));
-  object_wrt_sensor_.push_back(tf2::transformToEigen(cTo));
-
-  ControlTabWidget::addPoseSampleToTreeView(cTo, bTe, effector_wrt_world_.size());
+void ControlTabWidget::resetSampleBtnClicked(bool clicked)
+{
+  effector_wrt_world_.clear();
+  object_wrt_sensor_.clear();
+  tree_view_model_->clear();
 }
 
 } // namespace moveit_rviz_plugin

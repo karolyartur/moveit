@@ -38,9 +38,12 @@
 #define MOVEIT_HANDEYE_DEFAULT_SOLVER_
 
 #include <moveit/handeye_calibration_solver/handeye_solver_base.h>
+#include <ros/ros.h>
 
 namespace moveit_handeye_calibration
 {
+#define ARRAY_SIZE 4
+
 class HandEyeSolverDefault : public HandEyeSolverBase
 {
 public:
@@ -53,6 +56,9 @@ public:
 
   virtual bool solve(std::vector<Eigen::Isometry3d>& effector_wrt_world, 
                      std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup) override;
+
+  bool eigenIsometry3dToArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
+  bool arrayToEigenIsometry3d(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
 
 private:
 

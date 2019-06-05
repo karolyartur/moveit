@@ -38,7 +38,6 @@
 
 namespace moveit_rviz_plugin
 {
-
 const std::string LOGNAME = "handeye_target_widget";
 
 void RosTopicComboBox::addMsgsFilterType(QString msgs_type)
@@ -86,7 +85,7 @@ void RosTopicComboBox::mousePressEvent(QMouseEvent* event)
 }
 
 TargetTabWidget::TargetTabWidget(QWidget* parent)
-  : QWidget(parent), nh_("~"), it_(nh_)
+  : QWidget(parent), nh_("~"), it_(nh_), target_plugins_loader_(nullptr), target_(nullptr)
 {
    // Target setting tab area -----------------------------------------------
   QHBoxLayout * layout = new QHBoxLayout();

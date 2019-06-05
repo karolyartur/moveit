@@ -3,8 +3,14 @@ set(HEADERS
   include/moveit/handeye_calibration_solver/handeye_solver_default.h
 )
 
+# ---[ Using cmake scripts and modules
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
+find_package(PythonLibs REQUIRED)
+find_package(NumPy REQUIRED)
+
 #catkin_lint: ignore_once missing_directory
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR} ${PYTHON_INCLUDE_DIRS})
 
 # Plugin Source
 set(SOURCE_FILES
@@ -14,11 +20,11 @@ set(SOURCE_FILES
 set(MOVEIT_LIB_NAME moveit_handeye_calibration_solver)
 add_library(${MOVEIT_LIB_NAME}_core ${SOURCE_FILES} ${HEADERS})
 set_target_properties(${MOVEIT_LIB_NAME}_core PROPERTIES VERSION "${${PROJECT_NAME}_VERSION}")
-target_link_libraries(${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
 add_library(${MOVEIT_LIB_NAME} src/plugin_init.cpp)
 set_target_properties(${MOVEIT_LIB_NAME} PROPERTIES VERSION "${${PROJECT_NAME}_VERSION}")
-target_link_libraries(${MOVEIT_LIB_NAME} ${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(${MOVEIT_LIB_NAME} ${MOVEIT_LIB_NAME}_core ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PYTHON_LIBRARIES})
 
 install(DIRECTORY include/ DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION})
 
