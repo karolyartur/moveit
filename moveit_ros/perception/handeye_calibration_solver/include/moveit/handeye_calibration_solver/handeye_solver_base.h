@@ -57,8 +57,10 @@ public:
 
   virtual std::vector<std::string>& getSolverNames() = 0;
 
-  virtual bool solve(std::vector<Eigen::Isometry3d>& effector_wrt_world, 
-                     std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup) = 0;
+  virtual bool solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world, 
+                     const std::vector<Eigen::Isometry3d>& object_wrt_sensor, 
+                     SENSOR_MOUNT_TYPE setup = EYE_TO_HAND,
+                     const std::string& solver_name = "") = 0;
 };
 
 } // namespace moveit_handeye_calibration

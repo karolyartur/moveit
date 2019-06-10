@@ -40,6 +40,10 @@
 #include <moveit/handeye_calibration_solver/handeye_solver_base.h>
 #include <ros/ros.h>
 
+#include <Python.h>
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/arrayobject.h>
+
 namespace moveit_handeye_calibration
 {
 #define ARRAY_SIZE 4
@@ -54,11 +58,13 @@ public:
 
   virtual std::vector<std::string>& getSolverNames() override;
 
-  virtual bool solve(std::vector<Eigen::Isometry3d>& effector_wrt_world, 
-                     std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup) override;
+  virtual bool solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world, 
+                     const std::vector<Eigen::Isometry3d>& object_wrt_sensor, 
+                     SENSOR_MOUNT_TYPE setup = EYE_TO_HAND,
+                     const std::string& solver_name = "") override;
 
-  bool eigenIsometry3dToArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
-  bool arrayToEigenIsometry3d(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
+  bool toCArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
+  bool toIsometry3d(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
 
 private:
 
