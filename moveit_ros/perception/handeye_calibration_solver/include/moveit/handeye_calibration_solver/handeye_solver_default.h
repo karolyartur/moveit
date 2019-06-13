@@ -56,7 +56,7 @@ public:
 
   virtual void initialize() override;
 
-  virtual std::vector<std::string>& getSolverNames() override;
+  virtual const std::vector<std::string>& getSolverNames() override;
 
   virtual bool solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world, 
                      const std::vector<Eigen::Isometry3d>& object_wrt_sensor, 
@@ -64,11 +64,12 @@ public:
                      const std::string& solver_name = "") override;
 
   bool toCArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
-  bool toIsometry3d(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
+  virtual const Eigen::Isometry3d& getCameraRobotPose() override; 
 
 private:
 
-  std::vector<std::string> solver_names_;
+  std::vector<std::string> solver_names_;   // Solver algorithm names
+  Eigen::Isometry3d camera_robot_pose_;     // Computed camera-robot pose
 };
 
 } // namespace moveit_handeye_calibration

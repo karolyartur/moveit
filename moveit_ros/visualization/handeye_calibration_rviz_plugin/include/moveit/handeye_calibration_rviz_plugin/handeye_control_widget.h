@@ -92,6 +92,8 @@ public:
 
   void fillSolverTypes(const std::vector<std::string>& plugins);
 
+  std::string parseSolverName(const std::string& solver_name, char delimiter);
+
 public Q_SLOTS:
 
   void UpdateSensorMountType(int index);

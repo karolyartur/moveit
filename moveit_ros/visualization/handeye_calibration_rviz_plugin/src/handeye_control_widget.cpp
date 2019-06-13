@@ -154,12 +154,12 @@ bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
     {
       solver_plugins_loader_.reset(
           new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase>("moveit_ros_perception", 
-                                                                "moveit_handeye_calibration::HandEyeSolverBase"));
+                                                                 "moveit_handeye_calibration::HandEyeSolverBase"));
     }
     catch (pluginlib::PluginlibException& ex)
     {
       QMessageBox::warning(this, tr("Exception while creating handeye solver plugin loader "),
-                                     tr(ex.what()));
+                                 tr(ex.what()));
       return false;
     }
   }
@@ -171,9 +171,6 @@ bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
 
 bool ControlTabWidget::createSolverInstance(const std::string& plugin_name)
 {
-  if (plugin_name.empty())
-    return false;
-
   try
   {
     solver_ = solver_plugins_loader_->createUniqueInstance(plugin_name);
@@ -183,24 +180,35 @@ bool ControlTabWidget::createSolverInstance(const std::string& plugin_name)
   {
     ROS_ERROR_STREAM_NAMED(LOGNAME, "Exception while loading handeye solver plugin: " << plugin_name << ex.what());
     solver_ = nullptr;
-    return false;
   }
 
-  return true;
+  return solver_!=nullptr;
 }
 
 void ControlTabWidget::fillSolverTypes(const std::vector<std::string>& plugins)
 {
   for (const std::string& plugin: plugins)
-    if (createSolverInstance(plugin))
+    if (!plugin.empty() && createSolverInstance(plugin))
     {
-      std::vector<std::string>& solvers = solver_->getSolverNames();
+      const std::vector<std::string>& solvers = solver_->getSolverNames();
       for (const std::string& solver: solvers)
       {
-        std::string solver_name = plugin + "/" + solver;
+        std::string solver_name = plugin + "/" + solver; // solver name format is "plugin_name/solver_name"
           calibration_solver_->addItem(tr(solver_name.c_str()));
       }
     }
+}
+
+std::string ControlTabWidget::parseSolverName(const std::string& solver_name, char delimiter)
+{
+   std::vector<std::string> tokens;
+   std::string token;
+   std::istringstream tokenStream(solver_name);
+   while (std::getline(tokenStream, token, delimiter))
+   {
+      tokens.push_back(token);
+   }
+   return tokens.back();
 }
 
 void ControlTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
@@ -247,11 +255,6 @@ void ControlTabWidget::updateFrameNames(std::map<std::string, std::string> names
 
 void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 {
-  effector_wrt_world_.push_back(Eigen::Isometry3d::Identity());
-  object_wrt_sensor_.push_back(Eigen::Isometry3d::Identity());
-  solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_);
-  return;
-
   if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
      frame_names_["base"].empty() || frame_names_["eef"].empty())
   {
@@ -275,6 +278,12 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
     object_wrt_sensor_.push_back(tf2::transformToEigen(cTo));
 
     ControlTabWidget::addPoseSampleToTreeView(cTo, bTe, effector_wrt_world_.size());
+
+    if (effector_wrt_world_.size() > 4)
+    {
+      solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
+                     parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
+    }
   }
   catch (tf2::TransformException& e)
   {
