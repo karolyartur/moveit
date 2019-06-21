@@ -261,9 +261,11 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
 
 void ContextTabWidget::loadWidget(const rviz::Config& config)
 {
-  QString type;
-  if (config.mapGetString("sensor_mount_type", &type))
-    sensor_mount_type_->setCurrentText(type);
+  int index;
+  if (config.mapGetInt("sensor_mount_type", &index))
+    sensor_mount_type_->setCurrentIndex(index);
+
+  Q_EMIT sensorMountTypeChanged(index);
   
   for (std::pair<const std::string, TFFrameNameComboBox*>& frame : frames_)
   {
@@ -301,7 +303,7 @@ void ContextTabWidget::loadWidget(const rviz::Config& config)
 
 void ContextTabWidget::saveWidget(rviz::Config& config)
 {
-  config.mapSetValue("sensor_mount_type", sensor_mount_type_->currentText());
+  config.mapSetValue("sensor_mount_type", sensor_mount_type_->currentIndex());
 
   for (std::pair<const std::string, TFFrameNameComboBox*>& frame : frames_)
     config.mapSetValue(frame.first.c_str(), frame.second->currentText());
@@ -324,16 +326,16 @@ void ContextTabWidget::updateAllMarkers()
   {
     visual_tools_->deleteAllMarkers();
     tf_tools_->clearAllTransforms();
-    // tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
     
     QString from_frame("");
     mhc::SENSOR_MOUNT_TYPE setup = static_cast<mhc::SENSOR_MOUNT_TYPE>(sensor_mount_type_->currentIndex());
 
-    if (setup == mhc::EYE_TO_HAND)
-      from_frame = frames_["base"]->currentText();
-
-    if (setup == mhc::EYE_IN_HAND)
-      from_frame = frames_["eef"]->currentText();
+    switch (setup)
+    {
+      case mhc::EYE_TO_HAND: from_frame = frames_["base"]->currentText();break;
+      case mhc::EYE_IN_HAND: from_frame = frames_["eef"]->currentText(); break; 
+      default: ROS_ERROR_STREAM_NAMED(LOGNAME, "Error sensor mount type."); break;
+    }
 
     if (!from_frame.isEmpty())
     {
@@ -370,9 +372,6 @@ void ContextTabWidget::updateAllMarkers()
           visual_tools_->setBaseFrame(to_frame.toStdString());
           visual_tools_->setAlpha(fov_alpha_->getValue());
           visual_tools_->publishMesh(fov_pose_, mesh, rvt::YELLOW, 1.0, "fov", 1);
-          // visualization_msgs::Marker marker = getCameraFOVMarker(fov_pose_, mesh, rvt::YELLOW, fov_alpha_->getValue(), 
-          //                                                        to_frame.toStdString());
-          // visual_tools_->publishMarker(marker);
         }
       }
     }

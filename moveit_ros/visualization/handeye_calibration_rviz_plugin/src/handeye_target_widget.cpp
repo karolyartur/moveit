@@ -505,7 +505,8 @@ void TargetTabWidget::saveTargetImageBtnClicked(bool clicked)
     return;
   }
 
-  cv::imwrite(cv::String(fileName.toStdString()), target_image_);  
+  if (!cv::imwrite(cv::String(fileName.toStdString()), target_image_))
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Error OpenCV saving image.");
 }
 
 void TargetTabWidget::imageTopicComboboxChanged(const QString& topic)

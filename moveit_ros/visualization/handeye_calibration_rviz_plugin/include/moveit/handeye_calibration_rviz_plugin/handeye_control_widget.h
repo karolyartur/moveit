@@ -38,9 +38,13 @@
 #define MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_CALIBRATE_WIDGET_
 
 // qt
+#include <QFile>
+#include <QString>
 #include <QTreeView>
 #include <QComboBox>
 #include <QGroupBox>
+#include <QTextStream>
+#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QVBoxLayout>
@@ -55,6 +59,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <rviz_visual_tools/tf_visual_tools.h>
 #include <moveit/handeye_calibration_solver/handeye_solver_base.h>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+#include <moveit/move_group_interface/move_group_interface.h>
 
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>
@@ -74,8 +80,11 @@ public:
   ~ControlTabWidget()
   {
     tf_tools_.reset();
+    tf_buffer_.reset();
     solver_.reset();
     solver_plugins_loader_.reset();
+    move_group_.reset();
+    planning_scene_monitor_.reset();
   }
 
   void loadWidget(const rviz::Config& config);
@@ -106,6 +115,10 @@ private Q_SLOTS:
 
   void resetSampleBtnClicked(bool clicked);
 
+  void saveCameraPoseBtnClicked(bool clicked);
+
+  void planningGroupNameChanged(const QString& text);
+
 private:
 
   // ************************************************************** 
@@ -116,17 +129,21 @@ private:
   QStandardItemModel* tree_view_model_;
 
   QComboBox* calibration_solver_;
-  QPushButton* take_sample_btn_;
-  QPushButton* reset_sample_btn_;
-
-  QPushButton* start_auto_calib_btn_;
-  QPushButton* pause_auto_calib_btn_;
-  QPushButton* skip_robot_state_btn_;
 
   // Load & save pose samples and joint goals
   QPushButton* save_joint_state_btn_;
   QPushButton* load_joint_state_btn_;
   QPushButton* save_camera_pose_btn_;
+
+  // Manual calibration
+  QPushButton* take_sample_btn_;
+  QPushButton* reset_sample_btn_;
+
+  // Auto calibration
+  QComboBox* group_name_;
+  QPushButton* start_auto_calib_btn_;
+  QPushButton* pause_auto_calib_btn_;
+  QPushButton* skip_robot_state_btn_;
 
   QProgressBar* auto_progress_;
 
@@ -142,11 +159,15 @@ private:
   std::vector<Eigen::Isometry3d> effector_wrt_world_;
   std::vector<Eigen::Isometry3d> object_wrt_sensor_;
 
+  std::string from_frame_tag_;
+
+  Eigen::Isometry3d camera_robot_pose_;
+
   // ************************************************************** 
   // Ros components   
   // **************************************************************
 
-  tf2_ros::Buffer tf_buffer_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
@@ -154,6 +175,10 @@ private:
   std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase> > solver_plugins_loader_;
 
   pluginlib::UniquePtr<moveit_handeye_calibration::HandEyeSolverBase> solver_;
+
+  planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
+
+  moveit::planning_interface::MoveGroupInterfacePtr move_group_;
 };
 
 } // namespace moveit_rviz_plugin

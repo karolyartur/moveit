@@ -41,10 +41,14 @@ namespace moveit_rviz_plugin
 const std::string LOGNAME = "handeye_control_widget";
 
 ControlTabWidget::ControlTabWidget(QWidget* parent)
-  : QWidget(parent), 
-    tf_listener_(tf_buffer_), 
+  : QWidget(parent),
+    tf_buffer_(new tf2_ros::Buffer()), 
+    tf_listener_(*tf_buffer_), 
     sensor_mount_type_(mhc::EYE_TO_HAND),
-    solver_(nullptr)
+    solver_plugins_loader_(nullptr),
+    solver_(nullptr),
+    move_group_(nullptr),
+    camera_robot_pose_(Eigen::Isometry3d::Identity())
 {
   QVBoxLayout* layout = new QVBoxLayout();
   this->setLayout(layout);
@@ -85,6 +89,10 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   calibration_solver_ = new QComboBox();
   setting_layout->addRow("AX=XB Solver", calibration_solver_);
 
+  group_name_ = new QComboBox();
+  connect(group_name_, SIGNAL(activated(const QString&)), this, SLOT(planningGroupNameChanged(const QString&)));
+  setting_layout->addRow("Planning Group", group_name_);
+
   load_joint_state_btn_ = new QPushButton("Load Joint States");
   setting_layout->addRow(load_joint_state_btn_);
 
@@ -92,6 +100,7 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   setting_layout->addRow(save_joint_state_btn_);
 
   save_camera_pose_btn_ = new QPushButton("Save Camera Pose");
+  connect(save_camera_pose_btn_, SIGNAL(clicked(bool)), this, SLOT(saveCameraPoseBtnClicked(bool)));
   setting_layout->addRow(save_camera_pose_btn_);
 
   // Manual calibration area
@@ -101,39 +110,58 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   manual_cal_group->setLayout(control_cal_layout);
 
   take_sample_btn_ = new QPushButton("Take Sample");
-  take_sample_btn_->setFixedHeight(50);
+  take_sample_btn_->setFixedHeight(35);
   connect(take_sample_btn_, SIGNAL(clicked(bool)), this, SLOT(takeSampleBtnClicked(bool)));
   control_cal_layout->addWidget(take_sample_btn_);
 
   reset_sample_btn_ = new QPushButton("Reset Sample");
-  reset_sample_btn_->setFixedHeight(50);
+  reset_sample_btn_->setFixedHeight(35);
   connect(reset_sample_btn_, SIGNAL(clicked(bool)), this, SLOT(resetSampleBtnClicked(bool)));
   control_cal_layout->addWidget(reset_sample_btn_);
 
   // Auto calibration area
   QGroupBox* auto_cal_group = new QGroupBox("Auto Calibration");
   layout_right->addWidget(auto_cal_group);
-  QHBoxLayout* auto_cal_layout = new QHBoxLayout();
+  QVBoxLayout* auto_cal_layout = new QVBoxLayout();
   auto_cal_group->setLayout(auto_cal_layout);
 
+  QHBoxLayout* auto_btns_layout = new QHBoxLayout();
+  auto_cal_layout->addLayout(auto_btns_layout);
   start_auto_calib_btn_ = new QPushButton("Start");
-  start_auto_calib_btn_->setFixedHeight(50);
+  start_auto_calib_btn_->setFixedHeight(35);
   start_auto_calib_btn_->setToolTip("Start or resume auto calibration process");
-  auto_cal_layout->addWidget(start_auto_calib_btn_);
+  auto_btns_layout->addWidget(start_auto_calib_btn_);
 
   pause_auto_calib_btn_ = new QPushButton("Pause");
-  pause_auto_calib_btn_->setFixedHeight(50);
+  pause_auto_calib_btn_->setFixedHeight(35);
   pause_auto_calib_btn_->setToolTip("Pause the auto calibration process");
-  auto_cal_layout->addWidget(pause_auto_calib_btn_);
+  auto_btns_layout->addWidget(pause_auto_calib_btn_);
 
   skip_robot_state_btn_ = new QPushButton("Skip");
-  skip_robot_state_btn_->setFixedHeight(50);
+  skip_robot_state_btn_->setFixedHeight(35);
   skip_robot_state_btn_->setToolTip("Skip the current robot state target");
-  auto_cal_layout->addWidget(skip_robot_state_btn_);
+  auto_btns_layout->addWidget(skip_robot_state_btn_);
 
+  // Initialize handeye solver plugins
   std::vector<std::string> plugins;
   if (loadSolverPlugin(plugins))
-    fillSolverTypes(plugins); 
+    fillSolverTypes(plugins);
+
+  // Fill in available planning group names
+  planning_scene_monitor_.reset(new planning_scene_monitor::PlanningSceneMonitor("robot_description", tf_buffer_, 
+                                                                                 "planning_scene_monitor"));
+  if (planning_scene_monitor_)
+  {
+    planning_scene_monitor_->startSceneMonitor("move_group/monitored_planning_scene");
+    std::string service_name = planning_scene_monitor::PlanningSceneMonitor::DEFAULT_PLANNING_SCENE_SERVICE;
+    planning_scene_monitor_->requestPlanningSceneState(service_name);
+    const robot_model::RobotModelConstPtr& kmodel = planning_scene_monitor_->getRobotModel();
+    for (const std::string& group_name : kmodel->getJointModelGroupNames())
+      group_name_->addItem(group_name.c_str());
+    if (!group_name_->currentText().isEmpty())
+      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(
+                                 group_name_->currentText().toStdString()));
+  }                                                                               
 }
 
 void ControlTabWidget::loadWidget(const rviz::Config& config)
@@ -241,7 +269,13 @@ void ControlTabWidget::UpdateSensorMountType(int index)
 {
   if (0 <= index && index <= 1)
   {
-    sensor_mount_type_ = static_cast<mhc::SENSOR_MOUNT_TYPE>(index); 
+    sensor_mount_type_ = static_cast<mhc::SENSOR_MOUNT_TYPE>(index);
+    switch (sensor_mount_type_)
+    {
+      case mhc::EYE_TO_HAND: from_frame_tag_ = "base";break;
+      case mhc::EYE_IN_HAND: from_frame_tag_ = "eef"; break; 
+      default: ROS_ERROR_STREAM_NAMED(LOGNAME, "Error sensor mount type."); break;
+    }
   }
 }
 
@@ -268,10 +302,10 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
     geometry_msgs::TransformStamped bTe;
 
     // Get the transform of the object w.r.t the camera
-    cTo = tf_buffer_.lookupTransform(frame_names_["sensor"], frame_names_["object"], ros::Time(0));
+    cTo = tf_buffer_->lookupTransform(frame_names_["sensor"], frame_names_["object"], ros::Time(0));
 
     // Get the transform of the end-effector w.r.t the robot base
-    bTe = tf_buffer_.lookupTransform(frame_names_["base"], frame_names_["eef"], ros::Time(0));
+    bTe = tf_buffer_->lookupTransform(frame_names_["base"], frame_names_["eef"], ros::Time(0));
 
     // save the pose samples
     effector_wrt_world_.push_back(tf2::transformToEigen(bTe));
@@ -281,8 +315,21 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 
     if (effector_wrt_world_.size() > 4)
     {
-      solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
+      bool res = solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
                      parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
+      if (res)
+      {
+        camera_robot_pose_ = solver_->getCameraRobotPose();
+        std::string& from_frame = frame_names_[from_frame_tag_];
+        if (!from_frame.empty())
+        {
+          std::string& to_frame = frame_names_["sensor"];
+          tf_tools_->clearAllTransforms();
+          tf_tools_->publishTransform(camera_robot_pose_, from_frame, to_frame);
+        }
+        else
+          ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid key for the map of frame names.");
+      }
     }
   }
   catch (tf2::TransformException& e)
@@ -296,6 +343,70 @@ void ControlTabWidget::resetSampleBtnClicked(bool clicked)
   effector_wrt_world_.clear();
   object_wrt_sensor_.clear();
   tree_view_model_->clear();
+}
+
+void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
+{
+  std::string& from_frame = frame_names_[from_frame_tag_];
+  std::string& to_frame = frame_names_["sensor"];
+
+  if (from_frame.empty() || to_frame.empty())
+  {
+    QMessageBox::warning(this, tr("Empty Frame Name"), tr("Make sure you have set correct frame names."));
+    return;
+  }
+
+  QString fileName = QFileDialog::getSaveFileName(this,
+  tr("Save Camera Robot Pose"), "",
+  tr("Target File (*.launch);;All Files (*)"));
+  
+  if (fileName.isEmpty())
+    return;
+
+  if (!fileName.endsWith(".launch"))
+    fileName += ".launch";
+
+  QFile file(fileName);
+  if (!file.open(QIODevice::WriteOnly)) 
+  {
+    QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
+    return;
+  }
+
+  QTextStream out(&file);
+
+  Eigen::Vector3d t = camera_robot_pose_.translation();
+  Eigen::Vector3d r = camera_robot_pose_.rotation().eulerAngles(0, 1, 2);
+  std::stringstream ss;
+  ss << "<launch>\n";
+  ss << "<node pkg=\"tf2_ros\" type=\"static_transform_publisher\" name=\"camera_link_broadcaster\"\n";
+  ss << "      args=\"" << t[0] << " " << t[1] << " " << t[2] << " "
+                        << r[0] << " " << r[1] << " " << r[2] << " "
+                        << from_frame << " " << to_frame << "\" />\n";
+  ss << "</launch>";
+  out << ss.str().c_str();
+}
+
+void ControlTabWidget::planningGroupNameChanged(const QString& text)
+{
+  if(!text.isEmpty())
+  {
+    if (move_group_ && move_group_->getName() == text.toStdString())
+      return;
+    
+    try
+    {
+      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(text.toStdString()));
+    }
+    catch(const std::exception& e)
+    {
+      ROS_ERROR_NAMED(LOGNAME, "%s", e.what());
+    }
+  }
+  else
+  {
+    QMessageBox::warning(this, tr("Invalid Group Name"), "Group name is empty");
+  }
 }
 
 } // namespace moveit_rviz_plugin
