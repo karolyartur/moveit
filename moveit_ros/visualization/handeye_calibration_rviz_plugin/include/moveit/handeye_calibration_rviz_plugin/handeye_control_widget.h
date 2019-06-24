@@ -67,6 +67,8 @@
 #include <rviz/panel.h>
 #endif
 
+#include <yaml-cpp/yaml.h>
+
 namespace mhc = moveit_handeye_calibration;
 
 namespace moveit_rviz_plugin
@@ -119,6 +121,10 @@ private Q_SLOTS:
 
   void planningGroupNameChanged(const QString& text);
 
+  void saveJointStateBtnClicked(bool clicked);
+
+  void loadJointStateBtnClicked(bool clicked);
+
 private:
 
   // ************************************************************** 
@@ -162,6 +168,9 @@ private:
   std::string from_frame_tag_;
 
   Eigen::Isometry3d camera_robot_pose_;
+
+  std::vector<std::vector<double>> joint_values_;
+  std::vector<std::string> joint_names_;
 
   // ************************************************************** 
   // Ros components   

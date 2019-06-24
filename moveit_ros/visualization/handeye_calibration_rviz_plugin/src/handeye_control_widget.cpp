@@ -94,9 +94,11 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   setting_layout->addRow("Planning Group", group_name_);
 
   load_joint_state_btn_ = new QPushButton("Load Joint States");
+  connect(load_joint_state_btn_, SIGNAL(clicked(bool)), this, SLOT(loadJointStateBtnClicked(bool)));
   setting_layout->addRow(load_joint_state_btn_);
 
   save_joint_state_btn_ = new QPushButton("Save Joint states");
+  connect(save_joint_state_btn_, SIGNAL(clicked(bool)), this, SLOT(saveJointStateBtnClicked(bool)));
   setting_layout->addRow(save_joint_state_btn_);
 
   save_camera_pose_btn_ = new QPushButton("Save Camera Pose");
@@ -289,6 +291,8 @@ void ControlTabWidget::updateFrameNames(std::map<std::string, std::string> names
 
 void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 {
+
+  // All of four frame names needed for getting the pair of two tf transforms
   if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
      frame_names_["base"].empty() || frame_names_["eef"].empty())
   {
@@ -296,6 +300,35 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
     return;
   }
 
+  // Save the joint values at current robot state
+  // if (planning_scene_monitor_)
+  //   planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now());
+  const planning_scene_monitor::LockedPlanningSceneRO& ps = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+  if (ps)
+  {
+    const robot_state::RobotState& state = ps->getCurrentState();
+    const moveit::core::JointModelGroup* jmg = state.getJointModelGroup(group_name_->currentText().toStdString());
+    const std::vector<std::string>& names = jmg->getActiveJointModelNames();
+    if (joint_names_.size() != names.size() || joint_names_ != names)
+    {
+      joint_names_.clear();
+      joint_values_.clear();
+    }
+    joint_names_ = names;
+    std::vector<double> state_joint_values;
+    state.copyJointGroupPositions(jmg, state_joint_values);
+    joint_values_.push_back(state_joint_values);
+
+    for (std::string& name : joint_names_)
+      std::cout << name << " ";
+
+    std::cout << "\n";
+    for (std::vector<double>& value : joint_values_)
+      std::cout << value.size() << " ";
+  }
+  return;
+
+  // Store the pair of two tf transforms and calculate camera_robot pose
   try
   {
     geometry_msgs::TransformStamped cTo;
@@ -356,17 +389,16 @@ void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
     return;
   }
 
-  QString fileName = QFileDialog::getSaveFileName(this,
-  tr("Save Camera Robot Pose"), "",
-  tr("Target File (*.launch);;All Files (*)"));
+  QString file_name = QFileDialog::getSaveFileName(this, tr("Save Camera Robot Pose"), "",
+                                                  tr("Target File (*.launch);;All Files (*)"));
   
-  if (fileName.isEmpty())
+  if (file_name.isEmpty())
     return;
 
-  if (!fileName.endsWith(".launch"))
-    fileName += ".launch";
+  if (!file_name.endsWith(".launch"))
+    file_name += ".launch";
 
-  QFile file(fileName);
+  QFile file(file_name);
   if (!file.open(QIODevice::WriteOnly)) 
   {
     QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
@@ -407,6 +439,134 @@ void ControlTabWidget::planningGroupNameChanged(const QString& text)
   {
     QMessageBox::warning(this, tr("Invalid Group Name"), "Group name is empty");
   }
+
+  // Clear the joint values aligning with other group
+  joint_values_.clear();
+}
+
+void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
+{
+  if (joint_names_.empty() || joint_values_.empty())
+  {
+    QMessageBox::warning(this, tr("Invalid Joint Values"), tr("No joint state recorded."));
+    return;
+  }
+
+  for (size_t i = 0; i < joint_values_.size(); i++)
+    if (joint_names_.size() != joint_values_[i].size())
+    {
+      QMessageBox::warning(this, tr("Invalid Joint Values"), tr("Joint value and joint name don't match."));
+      return;
+    }
+
+  QString file_name = QFileDialog::getSaveFileName(this, tr("Save Joint States"), "",
+                                                  tr("Target File (*.yaml);;All Files (*)"));
+  
+  if (file_name.isEmpty())
+    return;
+
+  if (!file_name.endsWith(".yaml"))
+    file_name += ".yaml";
+
+  QFile file(file_name);
+  if (!file.open(QIODevice::WriteOnly)) 
+  {
+    QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
+    return;
+  }
+
+  YAML::Emitter emitter;
+  emitter << YAML::BeginMap;
+
+  // Joint Names
+  emitter << YAML::Key << "joint_names";
+  emitter << YAML::Value << YAML::BeginSeq;
+  for (size_t i = 0; i < joint_names_.size(); ++i)
+    emitter << YAML::Value << joint_names_[i];
+  emitter << YAML::EndSeq;
+
+  // Joint Values
+  emitter << YAML::Key << "joint_values";
+  emitter << YAML::Value << YAML::BeginSeq;
+  for (size_t i = 0; i < joint_values_.size(); ++i)
+  {
+    emitter << YAML::BeginSeq;
+    for (size_t j = 0; j < joint_values_[i].size(); ++j)
+      emitter << YAML::Value << joint_values_[i][j];
+    emitter << YAML::EndSeq;
+  }
+  emitter << YAML::EndSeq;
+
+  emitter << YAML::EndMap;
+
+  QTextStream out(&file);
+  out << emitter.c_str();
+}
+
+void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
+{
+  QString file_name = QFileDialog::getOpenFileName(this, tr("Load Joint States"), "",
+                                                  tr("Target File (*.yaml);;All Files (*)"));
+
+  if (file_name.isEmpty() || !file_name.endsWith(".yaml"))
+    return;
+
+  QFile file(file_name);
+  if (!file.open(QIODevice::ReadOnly)) 
+  {
+    QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
+    return;
+  }
+
+  // Begin parsing
+  try
+  {
+    ROS_INFO("ROS debug %s", file_name.toStdString().c_str());
+    YAML::Node doc = YAML::LoadFile(file_name.toStdString());
+    if (!doc.IsMap())
+      return;
+
+
+    const YAML::Node& names = doc["joint_names"];
+    if (!names.IsNull() && names.IsSequence())
+    {
+      joint_names_.clear();
+      for (YAML::const_iterator it = names.begin(); it != names.end(); ++it)
+        joint_names_.push_back(it->as<std::string>());
+    }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Can't find 'joint_names' in the openned file.");
+      return;
+    }
+    
+
+    const YAML::Node& values = doc["joint_values"];
+    if (!values.IsNull() && values.IsSequence())
+    {
+      joint_values_.clear();
+      for (YAML::const_iterator state_it = values.begin(); state_it != values.end(); ++state_it)
+      {
+        std::vector<double> jv;
+        if (!state_it->IsNull() && state_it->IsSequence())
+          for (YAML::const_iterator joint_it = state_it->begin(); joint_it != state_it->end(); ++joint_it)
+            jv.push_back(joint_it->as<double>());
+        if (jv.size() == joint_names_.size())
+          joint_values_.push_back(jv);
+      }
+    }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Can't find 'joint_values' in the openned file.");
+      return;
+    }
+  }
+  catch (YAML::ParserException& e)  // Catch errors
+  {
+    ROS_ERROR_STREAM_NAMED(LOGNAME, e.what());
+  }
+
+  ROS_INFO_STREAM_NAMED(LOGNAME, "Loaded and parsed: " << file_name.toStdString());
 }
 
 } // namespace moveit_rviz_plugin
