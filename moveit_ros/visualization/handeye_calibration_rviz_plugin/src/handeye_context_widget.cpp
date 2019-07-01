@@ -476,7 +476,7 @@ visualization_msgs::Marker ContextTabWidget::getCameraFOVMarker(const geometry_m
   return marker;
 }
 
-void ContextTabWidget::setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info)
+void ContextTabWidget::setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info)
 {
   camera_info_->header = camera_info->header;
   camera_info_->height = camera_info->height;
@@ -489,7 +489,7 @@ void ContextTabWidget::setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info)
   ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info changed: " << *camera_info);
 }
 
-void ContextTabWidget::setOpticalFrame(std::string& frame_id)
+void ContextTabWidget::setOpticalFrame(const std::string& frame_id)
 {
   optical_frame_ = frame_id;
   updateFOVPose();

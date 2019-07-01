@@ -178,8 +178,8 @@ public:
 
 public Q_SLOTS:
 
-  void setCameraInfo(sensor_msgs::CameraInfoPtr& camera_info);
-  void setOpticalFrame(std::string& frame_id);
+  void setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info);
+  void setOpticalFrame(const std::string& frame_id);
 
 private Q_SLOTS:
 
@@ -239,9 +239,7 @@ private:
   // **************************************************************
 
   moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
-
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
-
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 

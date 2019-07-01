@@ -54,13 +54,15 @@ bool HandEyeArucoTarget::setTargetIntrinsicParams(const int& markers_x, const in
                                                   const int& marker_size, const int& separation, 
                                                   const int& border_bits, const std::string& dictionary_id)
 {
-  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target intrinsic params: " << "\n"
-                                  << "markers_x_ " << std::to_string(markers_x) << "\n"
-                                  << "markers_y_ " << std::to_string(markers_y) << "\n"
-                                  << "marker_size " << std::to_string(marker_size) << "\n"
-                                  << "separation " << std::to_string(separation) << "\n"
-                                  << "border_bits" << std::to_string(border_bits) << "\n"
-                                  << "dictionary_id " << dictionary_id << "\n");
+  if (markers_x != markers_x_ || markers_y != markers_y_ || marker_size !=marker_size_ ||
+      separation != separation_ || border_bits != border_bits_ || dict_map_.find(dictionary_id)->second != dict_)
+    ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target intrinsic params: " << "\n"
+                                    << "markers_x_ " << std::to_string(markers_x) << "\n"
+                                    << "markers_y_ " << std::to_string(markers_y) << "\n"
+                                    << "marker_size " << std::to_string(marker_size) << "\n"
+                                    << "separation " << std::to_string(separation) << "\n"
+                                    << "border_bits" << std::to_string(border_bits) << "\n"
+                                    << "dictionary_id " << dictionary_id << "\n");
   if (markers_x > 0 && markers_y > 0 && marker_size > 0 && separation > 0 && border_bits > 0 && !dictionary_id.empty())
   {
     std::lock_guard<std::mutex> lck(aruco_mtx_);
@@ -90,9 +92,10 @@ bool HandEyeArucoTarget::setTargetIntrinsicParams(const int& markers_x, const in
 
 bool HandEyeArucoTarget::setTargetDimension(const double& marker_size, const double& marker_seperation)
 {
-  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target real dimensions: " << "\n"
-                                  << "marker_size " << std::to_string(marker_size) << "\n"
-                                  << "marker_seperation " << std::to_string(marker_seperation) << "\n");
+  if (marker_size != marker_size_real_ || marker_seperation != marker_seperation_real_)
+    ROS_DEBUG_STREAM_NAMED(LOGNAME, "Set target real dimensions: " << "\n"
+                                    << "marker_size " << std::to_string(marker_size) << "\n"
+                                    << "marker_seperation " << std::to_string(marker_seperation) << "\n");
 
   if (marker_size > 0 && marker_seperation > 0)
   {

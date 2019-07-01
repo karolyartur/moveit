@@ -146,9 +146,9 @@ private Q_SLOTS:
 
 Q_SIGNALS:
 
-  void cameraInfoChanged(sensor_msgs::CameraInfoPtr& msg);
+  void cameraInfoChanged(const sensor_msgs::CameraInfoPtr& msg);
 
-  void opticalFrameChanged(std::string& frame_id);
+  void opticalFrameChanged(const std::string& frame_id);
 
 private:
 
@@ -186,16 +186,12 @@ private:
   // Ros components   
   // **************************************************************
   ros::NodeHandle nh_;
-
   std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeTargetBase> > target_plugins_loader_;
-
   pluginlib::UniquePtr<moveit_handeye_calibration::HandEyeTargetBase> target_;
-
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
   ros::Subscriber camerainfo_sub_;
-
   // tf broadcaster
   tf2_ros::TransformBroadcaster tf_pub_;
 }; 

@@ -39,6 +39,7 @@
 
 // qt
 #include <QFile>
+#include <QLabel>
 #include <QString>
 #include <QTreeView>
 #include <QComboBox>
@@ -51,6 +52,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <QProgressBar>
+#include <QtConcurrent/QtConcurrent>
 #include <QStandardItemModel>
 
 // ros
@@ -58,9 +60,11 @@
 #include <pluginlib/class_loader.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <rviz_visual_tools/tf_visual_tools.h>
-#include <moveit/handeye_calibration_solver/handeye_solver_base.h>
-#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <moveit/planning_scene_monitor/planning_scene_monitor.h>
+#include <moveit/handeye_calibration_solver/handeye_solver_base.h>
+#include <moveit/background_processing/background_processing.h>
+#include <moveit/motion_planning_rviz_plugin/motion_planning_display.h>
 
 #ifndef Q_MOC_RUN
 #include <ros/ros.h>
@@ -73,6 +77,27 @@ namespace mhc = moveit_handeye_calibration;
 
 namespace moveit_rviz_plugin
 {
+class ProgressBarWidget : public QWidget
+{
+  Q_OBJECT
+
+public:
+
+  ProgressBarWidget(QWidget* parent, int min = 0, int max = 0, int value = 0);
+
+  ~ProgressBarWidget() override = default;
+
+  void setMax(int value);
+  void setMin(int value);
+  void setValue(int value);
+  int getValue();
+
+  QLabel* name_label_;
+  QLabel* value_label_;
+  QLabel* max_label_;
+  QProgressBar* bar_;
+};
+
 class ControlTabWidget: public QWidget
 {
   Q_OBJECT
@@ -105,6 +130,18 @@ public:
 
   std::string parseSolverName(const std::string& solver_name, char delimiter);
 
+  bool takeTranformSamples();
+
+  bool solveCameraRobotPose();
+
+  bool frameNamesEmpty();
+
+  bool checkJointStates();
+
+  void computePlan();
+
+  void computeExecution();
+
 public Q_SLOTS:
 
   void UpdateSensorMountType(int index);
@@ -124,6 +161,16 @@ private Q_SLOTS:
   void saveJointStateBtnClicked(bool clicked);
 
   void loadJointStateBtnClicked(bool clicked);
+
+  void autoPlanBtnClicked(bool clicked);
+
+  void autoExecuteBtnClicked(bool clicked);
+
+  void autoSkipBtnClicked(bool clicked);
+
+  void planFinished();
+
+  void executeFinished();
 
 private:
 
@@ -147,47 +194,48 @@ private:
 
   // Auto calibration
   QComboBox* group_name_;
-  QPushButton* start_auto_calib_btn_;
-  QPushButton* pause_auto_calib_btn_;
-  QPushButton* skip_robot_state_btn_;
+  QPushButton* auto_plan_btn_;
+  QPushButton* auto_execute_btn_;
+  QPushButton* auto_skip_btn_;
 
-  QProgressBar* auto_progress_;
+  // Progress of finished joint states for auto calibration
+  ProgressBarWidget* auto_progress_;
+
+  QFutureWatcher<void>* plan_watcher_;
+  QFutureWatcher<void>* execution_watcher_;
+
 
   // ************************************************************** 
   // Variables   
   // **************************************************************
 
   mhc::SENSOR_MOUNT_TYPE sensor_mount_type_;
-
   std::map<std::string, std::string> frame_names_;
-
   // Transform samples
   std::vector<Eigen::Isometry3d> effector_wrt_world_;
   std::vector<Eigen::Isometry3d> object_wrt_sensor_;
-
   std::string from_frame_tag_;
-
   Eigen::Isometry3d camera_robot_pose_;
-
-  std::vector<std::vector<double>> joint_values_;
+  std::vector<std::vector<double>> joint_states_;
   std::vector<std::string> joint_names_;
+  bool auto_started_;
+  bool planning_res_;
 
   // ************************************************************** 
   // Ros components   
   // **************************************************************
 
+  ros::NodeHandle nh_;
+  // ros::CallbackQueue callback_queue_;
+  // ros::AsyncSpinner spinner_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
-
   std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase> > solver_plugins_loader_;
-
   pluginlib::UniquePtr<moveit_handeye_calibration::HandEyeSolverBase> solver_;
-
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
-
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
+  moveit::planning_interface::MoveGroupInterface::PlanPtr current_plan_;
 };
 
 } // namespace moveit_rviz_plugin

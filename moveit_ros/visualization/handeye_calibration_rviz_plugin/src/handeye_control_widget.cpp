@@ -40,6 +40,59 @@ namespace moveit_rviz_plugin
 {
 const std::string LOGNAME = "handeye_control_widget";
 
+ProgressBarWidget::ProgressBarWidget(QWidget* parent, int min, int max, int value)
+  : QWidget(parent)
+{
+  QHBoxLayout* row = new QHBoxLayout(this);
+  row->setContentsMargins(0, 10, 0, 10);
+
+  // QLabel init
+  name_label_ = new QLabel("joint_state:", this);
+  name_label_->setContentsMargins(0, 0, 0, 0);
+  row->addWidget(name_label_);
+
+  value_label_ = new QLabel(QString::number(value), this);
+  value_label_->setContentsMargins(0, 0, 0, 0);
+  row->addWidget(value_label_);
+
+  // QProgressBar init
+  bar_ = new QProgressBar(this);
+  bar_->setTextVisible(true);
+  bar_->setMinimum(min);
+  bar_->setMaximum(max);
+  bar_->setValue(value);
+  bar_->setContentsMargins(0, 0, 0, 0);
+  row->addWidget(bar_);
+
+  max_label_ = new QLabel(QString::number(max), this);
+  max_label_->setContentsMargins(0, 0, 0, 0);
+  row->addWidget(max_label_);
+
+  this->setLayout(row);
+}
+
+void ProgressBarWidget::setMax(int value)
+{
+  bar_->setMaximum(value);
+  max_label_->setText(QString::number(value));
+}
+
+void ProgressBarWidget::setMin(int value)
+{
+  bar_->setMinimum(value);
+}
+
+void ProgressBarWidget::setValue(int value)
+{
+  bar_->setValue(value);
+  value_label_->setText(QString::number(value));
+}
+
+int ProgressBarWidget::getValue()
+{
+  return bar_->value();
+}
+
 ControlTabWidget::ControlTabWidget(QWidget* parent)
   : QWidget(parent),
     tf_buffer_(new tf2_ros::Buffer()), 
@@ -48,7 +101,10 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
     solver_plugins_loader_(nullptr),
     solver_(nullptr),
     move_group_(nullptr),
-    camera_robot_pose_(Eigen::Isometry3d::Identity())
+    camera_robot_pose_(Eigen::Isometry3d::Identity()),
+    auto_started_(false),
+    planning_res_(false)
+    // spinner_(0, &callback_queue_)
 {
   QVBoxLayout* layout = new QVBoxLayout();
   this->setLayout(layout);
@@ -57,8 +113,7 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   layout->addLayout(calib_layout);
 
   // Calibration progress
-  auto_progress_ = new QProgressBar();
-  auto_progress_->setTextVisible(true);
+  auto_progress_ = new ProgressBarWidget(this);
   layout->addWidget(auto_progress_);
 
   // Pose sample tree view area
@@ -129,20 +184,27 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
 
   QHBoxLayout* auto_btns_layout = new QHBoxLayout();
   auto_cal_layout->addLayout(auto_btns_layout);
-  start_auto_calib_btn_ = new QPushButton("Start");
-  start_auto_calib_btn_->setFixedHeight(35);
-  start_auto_calib_btn_->setToolTip("Start or resume auto calibration process");
-  auto_btns_layout->addWidget(start_auto_calib_btn_);
+  auto_plan_btn_ = new QPushButton("Plan");
+  auto_plan_btn_->setFixedHeight(35);
+  auto_plan_btn_->setToolTip("Start or resume auto calibration process");
+  connect(auto_plan_btn_, SIGNAL(clicked(bool)), this, SLOT(autoPlanBtnClicked(bool)));
+  auto_btns_layout->addWidget(auto_plan_btn_);
 
-  pause_auto_calib_btn_ = new QPushButton("Pause");
-  pause_auto_calib_btn_->setFixedHeight(35);
-  pause_auto_calib_btn_->setToolTip("Pause the auto calibration process");
-  auto_btns_layout->addWidget(pause_auto_calib_btn_);
+  auto_execute_btn_ = new QPushButton("Execute");
+  auto_execute_btn_->setFixedHeight(35);
+  auto_execute_btn_->setToolTip("Pause the auto calibration process");
+  connect(auto_execute_btn_, SIGNAL(clicked(bool)), this, SLOT(autoExecuteBtnClicked(bool)));
+  auto_btns_layout->addWidget(auto_execute_btn_);
 
-  skip_robot_state_btn_ = new QPushButton("Skip");
-  skip_robot_state_btn_->setFixedHeight(35);
-  skip_robot_state_btn_->setToolTip("Skip the current robot state target");
-  auto_btns_layout->addWidget(skip_robot_state_btn_);
+  auto_skip_btn_ = new QPushButton("Skip");
+  auto_skip_btn_->setFixedHeight(35);
+  auto_skip_btn_->setToolTip("Skip the current robot state target");
+  connect(auto_skip_btn_, SIGNAL(clicked(bool)), this, SLOT(autoSkipBtnClicked(bool)));
+  auto_btns_layout->addWidget(auto_skip_btn_);
+
+  // Set callbackqueue
+  // nh_.setCallbackQueue(&callback_queue_);
+  // spinner_.start();
 
   // Initialize handeye solver plugins
   std::vector<std::string> plugins;
@@ -156,14 +218,31 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   {
     planning_scene_monitor_->startSceneMonitor("move_group/monitored_planning_scene");
     std::string service_name = planning_scene_monitor::PlanningSceneMonitor::DEFAULT_PLANNING_SCENE_SERVICE;
-    planning_scene_monitor_->requestPlanningSceneState(service_name);
-    const robot_model::RobotModelConstPtr& kmodel = planning_scene_monitor_->getRobotModel();
-    for (const std::string& group_name : kmodel->getJointModelGroupNames())
-      group_name_->addItem(group_name.c_str());
-    if (!group_name_->currentText().isEmpty())
-      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(
-                                 group_name_->currentText().toStdString()));
-  }                                                                               
+    if (planning_scene_monitor_->requestPlanningSceneState(service_name))
+    {
+      const robot_model::RobotModelConstPtr& kmodel = planning_scene_monitor_->getRobotModel();
+      for (const std::string& group_name : kmodel->getJointModelGroupNames())
+        group_name_->addItem(group_name.c_str());
+      if (!group_name_->currentText().isEmpty())
+        try
+        {
+          moveit::planning_interface::MoveGroupInterface::Options opt(group_name_->currentText().toStdString());
+          opt.node_handle_ = nh_;
+          move_group_.reset(new moveit::planning_interface::MoveGroupInterface(opt, tf_buffer_, ros::WallDuration(30, 0)));
+        }
+        catch (std::exception& ex)
+        {
+          ROS_ERROR_NAMED(LOGNAME, "%s", ex.what());
+        }
+    }
+  }
+
+  // Set plan and execution watcher
+  plan_watcher_ = new QFutureWatcher<void>(this);
+  connect(plan_watcher_, &QFutureWatcher<void>::finished, this, &ControlTabWidget::planFinished);
+
+  execution_watcher_ = new QFutureWatcher<void>(this);
+  connect(execution_watcher_, &QFutureWatcher<void>::finished, this, &ControlTabWidget::executeFinished);
 }
 
 void ControlTabWidget::loadWidget(const rviz::Config& config)
@@ -241,6 +320,95 @@ std::string ControlTabWidget::parseSolverName(const std::string& solver_name, ch
    return tokens.back();
 }
 
+bool ControlTabWidget::takeTranformSamples()
+{
+  // Store the pair of two tf transforms and calculate camera_robot pose
+  try
+  {
+    geometry_msgs::TransformStamped cTo;
+    geometry_msgs::TransformStamped bTe;
+
+    // Get the transform of the object w.r.t the camera
+    cTo = tf_buffer_->lookupTransform(frame_names_["sensor"], frame_names_["object"], ros::Time(0));
+
+    // Get the transform of the end-effector w.r.t the robot base
+    bTe = tf_buffer_->lookupTransform(frame_names_["base"], frame_names_["eef"], ros::Time(0));
+
+    // save the pose samples
+    effector_wrt_world_.push_back(tf2::transformToEigen(bTe));
+    object_wrt_sensor_.push_back(tf2::transformToEigen(cTo));
+
+    ControlTabWidget::addPoseSampleToTreeView(cTo, bTe, effector_wrt_world_.size());
+  }
+  catch (tf2::TransformException& e)
+  {
+    ROS_WARN("TF exception: %s", e.what());
+    return false;
+  }
+
+  return true;
+}
+
+bool ControlTabWidget::solveCameraRobotPose()
+{
+  if (solver_ && !calibration_solver_->currentText().isEmpty())
+  {
+    bool res = solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
+                    parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
+    if (res)
+    {
+      camera_robot_pose_ = solver_->getCameraRobotPose();
+      std::string& from_frame = frame_names_[from_frame_tag_];
+      std::string& to_frame = frame_names_["sensor"];
+      if (!from_frame.empty() && !to_frame.empty())
+      {
+        tf_tools_->clearAllTransforms();
+        return tf_tools_->publishTransform(camera_robot_pose_, from_frame, to_frame);
+      }
+      else
+      {
+        ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid key used for reading the frame names.");
+        return false;
+      }
+    }
+  }
+  else
+  {
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "No available handeye calibration solver instance.");
+    return false;
+  }
+}
+
+bool ControlTabWidget::frameNamesEmpty()
+{
+  // All of four frame names needed for getting the pair of two tf transforms
+  if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
+     frame_names_["base"].empty() || frame_names_["eef"].empty())
+  {
+    QMessageBox::warning(this, tr("Empty Frame Name"), tr("At least one of the four frame names is empty."));
+    return true;
+  }
+  return false;
+}
+
+bool ControlTabWidget::checkJointStates()
+{
+  if (joint_names_.empty() || joint_states_.empty())
+  {
+    QMessageBox::warning(this, tr("Invalid Joint States"), tr("No joint state recorded."));
+    return false;
+  }
+
+  for (const std::vector<double>& state : joint_states_)
+    if (state.size() != joint_names_.size())
+    {
+      QMessageBox::warning(this, tr("Invalid Joint States"), tr("Joint values and joint names have different joint number."));
+      return false;
+    }
+
+  return true;
+}
+
 void ControlTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
 {
   tf_tools_ = tf_pub;
@@ -285,97 +453,63 @@ void ControlTabWidget::updateFrameNames(std::map<std::string, std::string> names
 {
   frame_names_ = names;
   ROS_DEBUG("Frame names changed:");
-  for (const std::pair<const std::string, std::string>& name : names)
+  for (const std::pair<const std::string, std::string>& name : frame_names_)
     ROS_DEBUG_STREAM(name.first << " : " << name.second);
 }
 
 void ControlTabWidget::takeSampleBtnClicked(bool clicked)
 {
-
-  // All of four frame names needed for getting the pair of two tf transforms
-  if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
-     frame_names_["base"].empty() || frame_names_["eef"].empty())
-  {
-    QMessageBox::warning(this, tr("Empty Frame Name"), tr("At least one of the four frame names is empty."));
+  if (frameNamesEmpty() || !takeTranformSamples())
     return;
-  }
 
-  // Save the joint values at current robot state
-  // if (planning_scene_monitor_)
-  //   planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now());
-  const planning_scene_monitor::LockedPlanningSceneRO& ps = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
-  if (ps)
+  if (effector_wrt_world_.size() == object_wrt_sensor_.size() && effector_wrt_world_.size() > 4)
+    if (!solveCameraRobotPose())
+      return;
+
+  // Save the joint values of current robot state
+  if (planning_scene_monitor_)
   {
-    const robot_state::RobotState& state = ps->getCurrentState();
-    const moveit::core::JointModelGroup* jmg = state.getJointModelGroup(group_name_->currentText().toStdString());
-    const std::vector<std::string>& names = jmg->getActiveJointModelNames();
-    if (joint_names_.size() != names.size() || joint_names_ != names)
+    planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now(), 0.1);
+    const planning_scene_monitor::LockedPlanningSceneRO& ps = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+    if (ps)
     {
-      joint_names_.clear();
-      joint_values_.clear();
-    }
-    joint_names_ = names;
-    std::vector<double> state_joint_values;
-    state.copyJointGroupPositions(jmg, state_joint_values);
-    joint_values_.push_back(state_joint_values);
-
-    for (std::string& name : joint_names_)
-      std::cout << name << " ";
-
-    std::cout << "\n";
-    for (std::vector<double>& value : joint_values_)
-      std::cout << value.size() << " ";
-  }
-  return;
-
-  // Store the pair of two tf transforms and calculate camera_robot pose
-  try
-  {
-    geometry_msgs::TransformStamped cTo;
-    geometry_msgs::TransformStamped bTe;
-
-    // Get the transform of the object w.r.t the camera
-    cTo = tf_buffer_->lookupTransform(frame_names_["sensor"], frame_names_["object"], ros::Time(0));
-
-    // Get the transform of the end-effector w.r.t the robot base
-    bTe = tf_buffer_->lookupTransform(frame_names_["base"], frame_names_["eef"], ros::Time(0));
-
-    // save the pose samples
-    effector_wrt_world_.push_back(tf2::transformToEigen(bTe));
-    object_wrt_sensor_.push_back(tf2::transformToEigen(cTo));
-
-    ControlTabWidget::addPoseSampleToTreeView(cTo, bTe, effector_wrt_world_.size());
-
-    if (effector_wrt_world_.size() > 4)
-    {
-      bool res = solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
-                     parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
-      if (res)
+      const robot_state::RobotState& state = ps->getCurrentState();
+      const moveit::core::JointModelGroup* jmg = state.getJointModelGroup(group_name_->currentText().toStdString());
+      const std::vector<std::string>& names = jmg->getActiveJointModelNames();
+      if (joint_names_.size() != names.size() || joint_names_ != names)
       {
-        camera_robot_pose_ = solver_->getCameraRobotPose();
-        std::string& from_frame = frame_names_[from_frame_tag_];
-        if (!from_frame.empty())
-        {
-          std::string& to_frame = frame_names_["sensor"];
-          tf_tools_->clearAllTransforms();
-          tf_tools_->publishTransform(camera_robot_pose_, from_frame, to_frame);
-        }
-        else
-          ROS_ERROR_STREAM_NAMED(LOGNAME, "Invalid key for the map of frame names.");
+        joint_names_.clear();
+        joint_states_.clear();
       }
+      std::vector<double> state_joint_values;
+      state.copyJointGroupPositions(jmg, state_joint_values);
+      if (names.size() == state_joint_values.size())
+      {
+        joint_names_ = names;
+        joint_states_.push_back(state_joint_values);
+        auto_progress_->setMax(joint_states_.size());
+      }
+      // for (std::string& name : joint_names_)
+      //   std::cout << name << " ";
+
+      // std::cout << "\n";
+      // for (std::vector<double>& value : joint_states_)
+      //   std::cout << value.size() << " ";
     }
-  }
-  catch (tf2::TransformException& e)
-  {
-    ROS_WARN("TF exception: %s", e.what());
   }
 }
 
 void ControlTabWidget::resetSampleBtnClicked(bool clicked)
 {
+  // Clear recorded transforms
   effector_wrt_world_.clear();
   object_wrt_sensor_.clear();
   tree_view_model_->clear();
+
+  // Clear recorded joint states
+  joint_states_.clear();
+  auto_progress_->setMax(0);
+  auto_progress_->setValue(0);
 }
 
 void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
@@ -428,7 +562,13 @@ void ControlTabWidget::planningGroupNameChanged(const QString& text)
     
     try
     {
-      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(text.toStdString()));
+      moveit::planning_interface::MoveGroupInterface::Options opt(group_name_->currentText().toStdString());
+      opt.node_handle_ = nh_;
+      move_group_.reset(new moveit::planning_interface::MoveGroupInterface(opt, tf_buffer_, ros::WallDuration(30, 0)));
+
+      // Clear the joint values aligning with other group
+      joint_states_.clear();
+      auto_progress_->setMax(0);
     }
     catch(const std::exception& e)
     {
@@ -439,28 +579,14 @@ void ControlTabWidget::planningGroupNameChanged(const QString& text)
   {
     QMessageBox::warning(this, tr("Invalid Group Name"), "Group name is empty");
   }
-
-  // Clear the joint values aligning with other group
-  joint_values_.clear();
 }
 
 void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
 {
-  if (joint_names_.empty() || joint_values_.empty())
-  {
-    QMessageBox::warning(this, tr("Invalid Joint Values"), tr("No joint state recorded."));
-    return;
-  }
-
-  for (size_t i = 0; i < joint_values_.size(); i++)
-    if (joint_names_.size() != joint_values_[i].size())
-    {
-      QMessageBox::warning(this, tr("Invalid Joint Values"), tr("Joint value and joint name don't match."));
-      return;
-    }
+  if (!checkJointStates()) return;
 
   QString file_name = QFileDialog::getSaveFileName(this, tr("Save Joint States"), "",
-                                                  tr("Target File (*.yaml);;All Files (*)"));
+                                                   tr("Target File (*.yaml);;All Files (*)"));
   
   if (file_name.isEmpty())
     return;
@@ -488,11 +614,11 @@ void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
   // Joint Values
   emitter << YAML::Key << "joint_values";
   emitter << YAML::Value << YAML::BeginSeq;
-  for (size_t i = 0; i < joint_values_.size(); ++i)
+  for (size_t i = 0; i < joint_states_.size(); ++i)
   {
     emitter << YAML::BeginSeq;
-    for (size_t j = 0; j < joint_values_[i].size(); ++j)
-      emitter << YAML::Value << joint_values_[i][j];
+    for (size_t j = 0; j < joint_states_[i].size(); ++j)
+      emitter << YAML::Value << joint_states_[i][j];
     emitter << YAML::EndSeq;
   }
   emitter << YAML::EndSeq;
@@ -506,7 +632,7 @@ void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
 void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
 {
   QString file_name = QFileDialog::getOpenFileName(this, tr("Load Joint States"), "",
-                                                  tr("Target File (*.yaml);;All Files (*)"));
+                                                   tr("Target File (*.yaml);;All Files (*)"));
 
   if (file_name.isEmpty() || !file_name.endsWith(".yaml"))
     return;
@@ -521,12 +647,12 @@ void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
   // Begin parsing
   try
   {
-    ROS_INFO("ROS debug %s", file_name.toStdString().c_str());
+    ROS_DEBUG_STREAM_NAMED(LOGNAME, "Load joint states from file: " << file_name.toStdString().c_str());
     YAML::Node doc = YAML::LoadFile(file_name.toStdString());
     if (!doc.IsMap())
       return;
 
-
+    // Read joint names
     const YAML::Node& names = doc["joint_names"];
     if (!names.IsNull() && names.IsSequence())
     {
@@ -540,11 +666,11 @@ void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
       return;
     }
     
-
+    // Read joint values
     const YAML::Node& values = doc["joint_values"];
     if (!values.IsNull() && values.IsSequence())
     {
-      joint_values_.clear();
+      joint_states_.clear();
       for (YAML::const_iterator state_it = values.begin(); state_it != values.end(); ++state_it)
       {
         std::vector<double> jv;
@@ -552,7 +678,7 @@ void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
           for (YAML::const_iterator joint_it = state_it->begin(); joint_it != state_it->end(); ++joint_it)
             jv.push_back(joint_it->as<double>());
         if (jv.size() == joint_names_.size())
-          joint_values_.push_back(jv);
+          joint_states_.push_back(jv);
       }
     }
     else
@@ -564,9 +690,125 @@ void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
   catch (YAML::ParserException& e)  // Catch errors
   {
     ROS_ERROR_STREAM_NAMED(LOGNAME, e.what());
+    return;
   }
 
+  if (joint_states_.size() > 0)
+  {
+    auto_progress_->setMax(joint_states_.size());
+    auto_progress_->setValue(0);
+  }
   ROS_INFO_STREAM_NAMED(LOGNAME, "Loaded and parsed: " << file_name.toStdString());
+}
+
+void ControlTabWidget::autoPlanBtnClicked(bool clicked)
+{
+  auto_plan_btn_->setEnabled(false);
+  plan_watcher_->setFuture(QtConcurrent::run(this, &ControlTabWidget::computePlan));
+}
+
+void ControlTabWidget::computePlan()
+{
+  planning_res_ = true;
+  int max = auto_progress_->bar_->maximum();
+
+  if (max != joint_states_.size() || auto_progress_->getValue() == max)
+    planning_res_ = false;
+
+  if (!checkJointStates())
+  {
+    QMessageBox::warning(this, tr("Error"), tr("No valid joint states found."));
+    planning_res_ = false;
+  }
+
+  if (!planning_scene_monitor_)
+  {
+    QMessageBox::warning(this, tr("Error"), tr("Can't get current planning scene."));
+    planning_res_ = false;
+  }
+
+  if (!move_group_ || move_group_->getActiveJoints() != joint_names_)
+  {
+    QMessageBox::warning(this, tr("Error"), tr("No valid move group for planning"));
+    planning_res_ = false;
+  }
+
+  if (!planning_res_)
+    return;
+
+  // Get current joint state as start state
+  robot_state::RobotStatePtr start_state = move_group_->getCurrentState();
+  planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now(), 0.1);
+  const planning_scene_monitor::LockedPlanningSceneRO& ps = 
+                  planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+  if (ps)
+    start_state.reset(new robot_state::RobotState(ps->getCurrentState()));
+
+  // Plan motion to the recorded joint state target
+  if (auto_progress_->getValue() < joint_states_.size())
+  {
+    move_group_->setStartState(*start_state);
+    move_group_->setJointValueTarget(joint_states_[auto_progress_->getValue()]);
+    move_group_->setMaxVelocityScalingFactor(0.5);
+    move_group_->setMaxAccelerationScalingFactor(0.5);
+    current_plan_.reset(new moveit::planning_interface::MoveGroupInterface::Plan());
+    planning_res_ = (move_group_->plan(*current_plan_) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+
+    if(planning_res_)
+      ROS_DEBUG_STREAM_NAMED(LOGNAME, "Planning succeed.");
+    else
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Planning failed.");
+  }
+}
+
+void ControlTabWidget::autoExecuteBtnClicked(bool clicked)
+{
+  if (plan_watcher_->isRunning())
+  {
+    plan_watcher_->waitForFinished();
+  }
+
+  auto_execute_btn_->setEnabled(false);
+  execution_watcher_->setFuture(QtConcurrent::run(this, &ControlTabWidget::computeExecution));
+}
+
+void ControlTabWidget::computeExecution()
+{
+  if (move_group_ && current_plan_)
+    planning_res_ = (move_group_->execute(*current_plan_) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+
+  if (planning_res_)
+  {
+    ROS_DEBUG_STREAM_NAMED(LOGNAME, "Execution succeed.");
+  }
+  else
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Execution failed.");
+}
+
+void ControlTabWidget::planFinished()
+{
+  auto_plan_btn_->setEnabled(true);
+  ROS_DEBUG_NAMED(LOGNAME, "Plan finished");
+}
+
+void ControlTabWidget::executeFinished()
+{
+  auto_execute_btn_->setEnabled(true);
+  auto_progress_->setValue(auto_progress_->getValue()+1);
+  if (planning_res_)
+  {
+    if (!frameNamesEmpty())
+      takeTranformSamples();
+
+    if (effector_wrt_world_.size() == object_wrt_sensor_.size() && effector_wrt_world_.size() > 4)
+      solveCameraRobotPose();
+  }
+  ROS_DEBUG_NAMED(LOGNAME, "Execution finished");
+}
+
+void ControlTabWidget::autoSkipBtnClicked(bool clicked)
+{
+  auto_progress_->setValue(auto_progress_->getValue()+1);
 }
 
 } // namespace moveit_rviz_plugin

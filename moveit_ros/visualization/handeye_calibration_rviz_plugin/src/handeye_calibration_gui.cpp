@@ -63,10 +63,10 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
   tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
   tab_context_ = new ContextTabWidget();
   tab_context_->setTFTool(tf_tools_);
-  connect(tab_target_, SIGNAL(cameraInfoChanged(sensor_msgs::CameraInfoPtr&)), 
-          tab_context_, SLOT(setCameraInfo(sensor_msgs::CameraInfoPtr&)));
-  connect(tab_target_, SIGNAL(opticalFrameChanged(std::string&)), 
-          tab_context_, SLOT(setOpticalFrame(std::string&)));
+  connect(tab_target_, SIGNAL(cameraInfoChanged(const sensor_msgs::CameraInfoPtr&)), 
+          tab_context_, SLOT(setCameraInfo(const sensor_msgs::CameraInfoPtr&)));
+  connect(tab_target_, SIGNAL(opticalFrameChanged(const std::string&)), 
+          tab_context_, SLOT(setOpticalFrame(const std::string&)));
   tab_control_ = new ControlTabWidget();
   tab_control_->setTFTool(tf_tools_);
   connect(tab_context_, SIGNAL(sensorMountTypeChanged(int)), 
