@@ -176,6 +176,8 @@ public:
   visualization_msgs::Marker getCameraFOVMarker(const geometry_msgs::Pose& pose, const shape_msgs::Mesh& mesh, 
                                                 rvt::colors color, double alpha, std::string frame_id);
 
+  void setCameraPose(double tx, double ty, double tz, double rx, double ry, double rz);
+
 public Q_SLOTS:
 
   void setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info);

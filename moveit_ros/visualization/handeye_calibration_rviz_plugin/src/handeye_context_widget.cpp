@@ -356,11 +356,8 @@ void ContextTabWidget::updateAllMarkers()
       if (!to_frame.isEmpty())
       {
         // Get camera pose guess
-        camera_pose_.setIdentity();
-        camera_pose_ = visual_tools_->convertFromXYZRPY(guess_pose_["Tx"]->getValue(), guess_pose_["Ty"]->getValue(), 
-                                                        guess_pose_["Tz"]->getValue(), guess_pose_["Rx"]->getValue(), 
-                                                        guess_pose_["Ry"]->getValue(), guess_pose_["Rz"]->getValue(),
-                                                        rviz_visual_tools::XYZ);
+        setCameraPose(guess_pose_["Tx"]->getValue(), guess_pose_["Ty"]->getValue(), guess_pose_["Tz"]->getValue(), 
+                      guess_pose_["Rx"]->getValue(), guess_pose_["Ry"]->getValue(), guess_pose_["Rz"]->getValue());
 
         // Publish new transform from robot base or end-effector to sensor frame
         tf_tools_->publishTransform(camera_pose_, from_frame.toStdString(), to_frame.toStdString());
@@ -474,6 +471,12 @@ visualization_msgs::Marker ContextTabWidget::getCameraFOVMarker(const geometry_m
       marker.points.push_back(mesh.vertices[index]);
 
   return marker;
+}
+
+void ContextTabWidget::setCameraPose(double tx, double ty, double tz, double rx, double ry, double rz)
+{
+  camera_pose_.setIdentity();
+  camera_pose_ = visual_tools_->convertFromXYZRPY(tx, ty, tz, rx, ry, rz, rviz_visual_tools::XYZ);
 }
 
 void ContextTabWidget::setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info)

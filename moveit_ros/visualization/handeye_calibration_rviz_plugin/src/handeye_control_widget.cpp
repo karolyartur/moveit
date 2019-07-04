@@ -252,7 +252,7 @@ void ControlTabWidget::loadWidget(const rviz::Config& config)
 
 void ControlTabWidget::saveWidget(rviz::Config& config)
 {
-
+  
 }
 
 bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
@@ -358,6 +358,13 @@ bool ControlTabWidget::solveCameraRobotPose()
     if (res)
     {
       camera_robot_pose_ = solver_->getCameraRobotPose();
+
+      // Update camera pose guess in context tab
+      Eigen::Vector3d t = camera_robot_pose_.translation();
+      Eigen::Vector3d r = camera_robot_pose_.rotation().eulerAngles(0, 1, 2);
+      Q_EMIT sensorPoseUpdate(t[0], t[1], t[2], r[0], r[1], r[2]);
+      
+      // Publish camera pose tf
       std::string& from_frame = frame_names_[from_frame_tag_];
       std::string& to_frame = frame_names_["sensor"];
       if (!from_frame.empty() && !to_frame.empty())
@@ -489,12 +496,6 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
         joint_states_.push_back(state_joint_values);
         auto_progress_->setMax(joint_states_.size());
       }
-      // for (std::string& name : joint_names_)
-      //   std::cout << name << " ";
-
-      // std::cout << "\n";
-      // for (std::vector<double>& value : joint_states_)
-      //   std::cout << value.size() << " ";
     }
   }
 }

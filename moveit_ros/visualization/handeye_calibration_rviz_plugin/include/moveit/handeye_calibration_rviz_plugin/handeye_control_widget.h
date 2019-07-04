@@ -142,6 +142,10 @@ public:
 
   void computeExecution();
 
+Q_SIGNALS:
+
+  void sensorPoseUpdate(double x, double y, double z, double rx, double ry, double rz);
+
 public Q_SLOTS:
 
   void UpdateSensorMountType(int index);
