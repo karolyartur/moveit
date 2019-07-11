@@ -44,6 +44,7 @@
 #include <QLineEdit>
 #include <QGroupBox>
 #include <QComboBox>
+#include <QMetaType>
 #include <QTabWidget>
 #include <QPushButton>
 #include <QHBoxLayout>
@@ -72,6 +73,9 @@
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #endif
+
+Q_DECLARE_METATYPE(sensor_msgs::CameraInfo);
+Q_DECLARE_METATYPE(std::string);
 
 namespace moveit_rviz_plugin
 {
@@ -146,7 +150,7 @@ private Q_SLOTS:
 
 Q_SIGNALS:
 
-  void cameraInfoChanged(const sensor_msgs::CameraInfoPtr& msg);
+  void cameraInfoChanged(sensor_msgs::CameraInfo msg);
 
   void opticalFrameChanged(const std::string& frame_id);
 

@@ -190,6 +190,10 @@ TargetTabWidget::TargetTabWidget(QWidget* parent)
 
   // Initialize camera info dada
   camera_info_.reset(new sensor_msgs::CameraInfo());
+
+  // Register custom types
+  qRegisterMetaType<sensor_msgs::CameraInfo>();
+  qRegisterMetaType<std::string>();
 }
 
 void TargetTabWidget::loadWidget(const rviz::Config& config)
@@ -404,21 +408,6 @@ void TargetTabWidget::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& 
   {
     if (msg->height > 0 && msg->width > 0 && !msg->K.empty() && !msg->D.empty())
     {
-      /* camera_info_->height = 480;
-        camera_info_->width = 640;
-        camera_info_->distortion_model = "plumb_bob";
-        camera_info_->D = {0.0, 0.0, 0.0, 0.0, 0.0};
-        camera_info_->K = {618.6002197265625, 0.0, 321.9837646484375,
-                          0.0, 619.1103515625, 241.1459197998047,
-                          0.0, 0.0, 1.0};
-        camera_info_->R = {1.0, 0.0, 0.0,
-                          0.0, 1.0, 0.0,
-                          0.0, 0.0, 1.0};
-        camera_info_->P = {618.6002197265625, 0.0, 321.9837646484375, 0.0,
-                          0.0, 619.1103515625, 241.1459197998047, 0.0,
-                          0.0, 0.0, 1.0, 0.0}; 
-      */
-
       if (msg->K != camera_info_->K || msg->P != camera_info_->P)
       {
         ROS_DEBUG("Received camera info.");
@@ -431,7 +420,7 @@ void TargetTabWidget::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& 
         camera_info_->R = msg->R;
         camera_info_->P = msg->P;
         target_->setCameraIntrinsicParams(camera_info_);
-        Q_EMIT cameraInfoChanged(camera_info_);
+        Q_EMIT cameraInfoChanged(*camera_info_);
       }
     }
   }

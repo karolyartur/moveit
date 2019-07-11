@@ -207,7 +207,7 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
   fov_alpha_ = new SliderWidget(this, "Transparency", 0, 1);
   fov_alpha_->setValue(0.5);
   fov_layout->addRow(fov_alpha_);
-  connect(fov_alpha_, SIGNAL(valueChanged(double)), this, SLOT(updateCameraPose(double)));
+  connect(fov_alpha_, SIGNAL(valueChanged(double)), this, SLOT(updateCameraMarkerPose(double)));
 
   fov_on_off_ = new QRadioButton();
   fov_on_off_->setChecked(true);
@@ -242,7 +242,7 @@ ContextTabWidget::ContextTabWidget(QWidget* parent)
   for (std::pair<const std::string, SliderWidget*>& dim : guess_pose_)
   {
     dim.second->setValue(0);
-    connect(dim.second, SIGNAL(valueChanged(double)), this, SLOT(updateCameraPose(double)));
+    connect(dim.second, SIGNAL(valueChanged(double)), this, SLOT(updateCameraMarkerPose(double)));
   }
 
   // Variable Initialization
@@ -317,7 +317,7 @@ void ContextTabWidget::saveWidget(rviz::Config& config)
 
 void ContextTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
 {
-  tf_tools_ = tf_pub;
+  tf_tools_.reset(tf_pub.get());
 }
 
 void ContextTabWidget::updateAllMarkers()
@@ -355,7 +355,7 @@ void ContextTabWidget::updateAllMarkers()
       QString to_frame = frames_["sensor"]->currentText();
       if (!to_frame.isEmpty())
       {
-        // Get camera pose guess
+        // // Get camera pose guess
         setCameraPose(guess_pose_["Tx"]->getValue(), guess_pose_["Ty"]->getValue(), guess_pose_["Tz"]->getValue(), 
                       guess_pose_["Rx"]->getValue(), guess_pose_["Ry"]->getValue(), guess_pose_["Rz"]->getValue());
 
@@ -479,23 +479,35 @@ void ContextTabWidget::setCameraPose(double tx, double ty, double tz, double rx,
   camera_pose_ = visual_tools_->convertFromXYZRPY(tx, ty, tz, rx, ry, rz, rviz_visual_tools::XYZ);
 }
 
-void ContextTabWidget::setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info)
+void ContextTabWidget::setCameraInfo(sensor_msgs::CameraInfo camera_info)
 {
-  camera_info_->header = camera_info->header;
-  camera_info_->height = camera_info->height;
-  camera_info_->width = camera_info->width;
-  camera_info_->distortion_model = camera_info->distortion_model;
-  camera_info_->D = camera_info->D;
-  camera_info_->K = camera_info->K;
-  camera_info_->R = camera_info->R;
-  camera_info_->P = camera_info->P;
-  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info changed: " << *camera_info);
+  camera_info_->header = camera_info.header;
+  camera_info_->height = camera_info.height;
+  camera_info_->width = camera_info.width;
+  camera_info_->distortion_model = camera_info.distortion_model;
+  camera_info_->D = camera_info.D;
+  camera_info_->K = camera_info.K;
+  camera_info_->R = camera_info.R;
+  camera_info_->P = camera_info.P;
+  ROS_DEBUG_STREAM_NAMED(LOGNAME, "Camera info changed: " << *camera_info_);
 }
 
 void ContextTabWidget::setOpticalFrame(const std::string& frame_id)
 {
   optical_frame_ = frame_id;
   updateFOVPose();
+}
+
+void ContextTabWidget::updateCameraPose(double tx, double ty, double tz, double rx, double ry, double rz)
+{
+  // setCameraPose(tx, ty, tz, rx, ry, rz);
+  guess_pose_["Tx"]->setValue(tx); 
+  guess_pose_["Ty"]->setValue(ty); 
+  guess_pose_["Tz"]->setValue(tz); 
+  guess_pose_["Rx"]->setValue(rx); 
+  guess_pose_["Ry"]->setValue(ry); 
+  guess_pose_["Rz"]->setValue(rz);
+  updateCameraMarkerPose(0);
 }
 
 void ContextTabWidget::updateSensorMountType(int index)
@@ -520,7 +532,7 @@ void ContextTabWidget::updateFrameName(int index)
   Q_EMIT frameNameChanged(names);
 }
 
-void ContextTabWidget::updateCameraPose(double value)
+void ContextTabWidget::updateCameraMarkerPose(double value)
 {
   updateAllMarkers();
 }

@@ -180,8 +180,11 @@ public:
 
 public Q_SLOTS:
 
-  void setCameraInfo(const sensor_msgs::CameraInfoPtr& camera_info);
+  void setCameraInfo(sensor_msgs::CameraInfo camera_info);
+
   void setOpticalFrame(const std::string& frame_id);
+
+  void updateCameraPose(double tx, double ty, double tz, double rx, double ry, double rz);
 
 private Q_SLOTS:
 
@@ -192,7 +195,7 @@ private Q_SLOTS:
   void updateFrameName(int index);
 
   // Called when the slider of initial camera pose guess changed
-  void updateCameraPose(double value);
+  void updateCameraMarkerPose(double value);
 
   // Called when the fov_on_off_ button toggled
   void fovOnOffBtnToggled(bool checked);
