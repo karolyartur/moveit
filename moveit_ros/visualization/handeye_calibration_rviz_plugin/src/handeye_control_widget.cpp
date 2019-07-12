@@ -202,10 +202,6 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
   connect(auto_skip_btn_, SIGNAL(clicked(bool)), this, SLOT(autoSkipBtnClicked(bool)));
   auto_btns_layout->addWidget(auto_skip_btn_);
 
-  // Set callbackqueue
-  // nh_.setCallbackQueue(&callback_queue_);
-  // spinner_.start();
-
   // Initialize handeye solver plugins
   std::vector<std::string> plugins;
   if (loadSolverPlugin(plugins))
@@ -247,12 +243,24 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
 
 void ControlTabWidget::loadWidget(const rviz::Config& config)
 {
-
+  QString group_name;
+  config.mapGetString("group", &group_name);
+  if (!group_name.isEmpty() && planning_scene_monitor_)
+  {
+    const std::vector<std::string> groups = planning_scene_monitor_->getRobotModel()->getJointModelGroupNames();
+    std::vector<std::string>::const_iterator it = std::find(groups.begin(), groups.end(), group_name.toStdString());
+    if (it != groups.end())
+    {
+      group_name_->setCurrentText(group_name);
+      Q_EMIT group_name_->activated(group_name);
+    }
+  }
 }
 
 void ControlTabWidget::saveWidget(rviz::Config& config)
 {
-  
+  config.mapSetValue("solver", calibration_solver_->currentText());
+  config.mapSetValue("group", group_name_->currentText()); 
 }
 
 bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
@@ -401,17 +409,11 @@ bool ControlTabWidget::frameNamesEmpty()
 bool ControlTabWidget::checkJointStates()
 {
   if (joint_names_.empty() || joint_states_.empty())
-  {
-    QMessageBox::warning(this, tr("Invalid Joint States"), tr("No joint state recorded."));
     return false;
-  }
 
   for (const std::vector<double>& state : joint_states_)
     if (state.size() != joint_names_.size())
-    {
-      QMessageBox::warning(this, tr("Invalid Joint States"), tr("Joint values and joint names have different joint number."));
       return false;
-    }
 
   return true;
 }
@@ -584,7 +586,11 @@ void ControlTabWidget::planningGroupNameChanged(const QString& text)
 
 void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
 {
-  if (!checkJointStates()) return;
+  if (!checkJointStates())
+  {
+    QMessageBox::warning(this, tr("Error"), tr("No joint states or joint state dosen't match joint names."));
+    return;
+  }
 
   QString file_name = QFileDialog::getSaveFileName(this, tr("Save Joint States"), "",
                                                    tr("Target File (*.yaml);;All Files (*)"));
@@ -714,28 +720,28 @@ void ControlTabWidget::computePlan()
   int max = auto_progress_->bar_->maximum();
 
   if (max != joint_states_.size() || auto_progress_->getValue() == max)
+  {
     planning_res_ = false;
+    return;
+  }
 
   if (!checkJointStates())
   {
-    QMessageBox::warning(this, tr("Error"), tr("No valid joint states found."));
     planning_res_ = false;
+    return;
   }
 
   if (!planning_scene_monitor_)
   {
-    QMessageBox::warning(this, tr("Error"), tr("Can't get current planning scene."));
     planning_res_ = false;
+    return;
   }
 
   if (!move_group_ || move_group_->getActiveJoints() != joint_names_)
   {
-    QMessageBox::warning(this, tr("Error"), tr("No valid move group for planning"));
     planning_res_ = false;
-  }
-
-  if (!planning_res_)
     return;
+  }
 
   // Get current joint state as start state
   robot_state::RobotStatePtr start_state = move_group_->getCurrentState();
@@ -789,15 +795,17 @@ void ControlTabWidget::computeExecution()
 void ControlTabWidget::planFinished()
 {
   auto_plan_btn_->setEnabled(true);
+  if (!planning_res_)
+    QMessageBox::warning(this, tr("Error"), tr("Please check if move_group is started or there are recorded joint states."));
   ROS_DEBUG_NAMED(LOGNAME, "Plan finished");
 }
 
 void ControlTabWidget::executeFinished()
 {
   auto_execute_btn_->setEnabled(true);
-  auto_progress_->setValue(auto_progress_->getValue()+1);
   if (planning_res_)
   {
+    auto_progress_->setValue(auto_progress_->getValue()+1);
     if (!frameNamesEmpty())
       takeTranformSamples();
 
