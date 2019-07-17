@@ -39,6 +39,7 @@
   <depend>moveit_ros_occupancy_map_monitor</depend>
 
   <build_depend>eigen</build_depend>
+  <build_depend>octomap</build_depend>
 
   <test_depend>rosunit</test_depend>
 

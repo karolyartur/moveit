@@ -47,7 +47,6 @@ namespace moveit_handeye_calibration
 class HandEyeTargetBase
 {
 public:
-
   virtual ~HandEyeTargetBase() = default;
   HandEyeTargetBase()
   {
@@ -57,10 +56,9 @@ public:
 
   virtual bool initialize() = 0;
 
-  virtual bool setTargetIntrinsicParams(const int& markers_x, const int& markers_y, 
-                                        const int& marker_size_, const int& separation, 
-                                        const int& border_bits, const std::string& dictionary_id) = 0;
-
+  virtual bool setTargetIntrinsicParams(const int& markers_x, const int& markers_y, const int& marker_size_,
+                                        const int& separation, const int& border_bits,
+                                        const std::string& dictionary_id) = 0;
 
   virtual bool setTargetDimension(const double& marker_size, const double& marker_seperation) = 0;
 
@@ -77,34 +75,37 @@ public:
     if (msg)
     {
       ROS_DEBUG_STREAM_NAMED("handeye_target_base", "CameraInfo set: " << *msg);
-      
       if (msg->K.size() == 9 && msg->D.size() == 5)
       {
         std::lock_guard<std::mutex> lck(base_mtx_);
         // Store camera matrix info
-        for (size_t i = 0; i < 3; i++) 
+        for (size_t i = 0; i < 3; i++)
         {
-          for (size_t j = 0; j < 3; j++) 
+          for (size_t j = 0; j < 3; j++)
           {
-            camera_matrix_.at<double>(i, j) = msg->K[i*3+j];
+            camera_matrix_.at<double>(i, j) = msg->K[i * 3 + j];
           }
         }
-      
+
         // Store camera distortion info
-        for (size_t i = 0; i < 5; i++) 
+        for (size_t i = 0; i < 5; i++)
         {
-          distor_coeffs_.at<double>(i,0) = msg->D[i];
+          distor_coeffs_.at<double>(i, 0) = msg->D[i];
         }
+
+        return true;
       }
+      else
+        return false;
     }
     else
     {
+      return false;
       ROS_ERROR_STREAM_NAMED("handeye_target_base", "CameraInfo msg is NULL.");
     }
   }
-  
-protected:
 
+protected:
   // 3x3 floating-point camera matrix
   //     [fx  0 cx]
   // K = [ 0 fy cy]

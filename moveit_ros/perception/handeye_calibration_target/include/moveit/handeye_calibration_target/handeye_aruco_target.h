@@ -49,7 +49,6 @@
 
 namespace moveit_handeye_calibration
 {
-
 class HandEyeArucoTarget : public HandEyeTargetBase
 {
 public:
@@ -61,17 +60,17 @@ public:
     // camera_matrix_ = cv::Mat::eye(3, 3, CV_64F);
     // distor_coeffs_ = cv::Mat::zeros(5, 1, CV_64F);
 
-    dict_map_ = {{"DICT_4X4_250", cv::aruco::DICT_4X4_250}, 
-                 {"DICT_5X5_250", cv::aruco::DICT_5X5_250}, 
-                 {"DICT_6X6_250", cv::aruco::DICT_6X6_250}, 
-                 {"DICT_7X7_250", cv::aruco::DICT_7X7_250}, 
-                 {"DICT_ARUCO_ORIGINAL", cv::aruco::DICT_ARUCO_ORIGINAL}};
+    dict_map_ = { { "DICT_4X4_250", cv::aruco::DICT_4X4_250 },
+                  { "DICT_5X5_250", cv::aruco::DICT_5X5_250 },
+                  { "DICT_6X6_250", cv::aruco::DICT_6X6_250 },
+                  { "DICT_7X7_250", cv::aruco::DICT_7X7_250 },
+                  { "DICT_ARUCO_ORIGINAL", cv::aruco::DICT_ARUCO_ORIGINAL } };
     return true;
   }
 
-  virtual bool setTargetIntrinsicParams(const int& markers_x, const int& markers_y, 
-                                        const int& marker_size, const int& separation, 
-                                        const int& border_bits, const std::string& dictionary_id) override;
+  virtual bool setTargetIntrinsicParams(const int& markers_x, const int& markers_y, const int& marker_size,
+                                        const int& separation, const int& border_bits,
+                                        const std::string& dictionary_id) override;
 
   // virtual bool setCameraIntrinsicParams(const sensor_msgs::CameraInfoPtr& msg) override;
 
@@ -86,29 +85,27 @@ public:
   virtual geometry_msgs::TransformStamped getPose(std::string& frame_id) override;
 
 protected:
-
-  // Convert rvect_ to tf2::Quaternion 
+  // Convert rvect_ to tf2::Quaternion
   void getTFQuaternion(tf2::Quaternion& q);
 
   // Convert tvect_ to std::vector<double>
   void getTranslationVect(std::vector<double>& t);
 
 private:
-
   // Predefined dictionary map
   std::map<std::string, cv::aruco::PREDEFINED_DICTIONARY_NAME> dict_map_;
 
   // Target intrinsic params
-  int markers_x_;       // Number of markers along X axis
-  int markers_y_;       // Number of markers along Y axis
-  int marker_size_;     // Marker size in pixels
-  int separation_;      // Marker seperation distance in pixels
-  int border_bits_;     // Margin of boarder in bits
-  cv::aruco::PREDEFINED_DICTIONARY_NAME dict_; // Marker dictionary id
-  
+  int markers_x_;                               // Number of markers along X axis
+  int markers_y_;                               // Number of markers along Y axis
+  int marker_size_;                             // Marker size in pixels
+  int separation_;                              // Marker seperation distance in pixels
+  int border_bits_;                             // Margin of boarder in bits
+  cv::aruco::PREDEFINED_DICTIONARY_NAME dict_;  // Marker dictionary id
+
   // Target real dimensions in meters
-  double marker_size_real_;         // Printed marker size
-  double marker_seperation_real_;   // Printed marker seperation distance
+  double marker_size_real_;        // Printed marker size
+  double marker_seperation_real_;  // Printed marker seperation distance
 
   // Rotation and translation of the board w.r.t the camera frame
   cv::Vec3d tvect_, rvect_;
@@ -116,6 +113,6 @@ private:
   std::mutex aruco_mtx_;
 };
 
-} // namespace moveit_handeye_calibration
+}  // namespace moveit_handeye_calibration
 
 #endif
