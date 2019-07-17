@@ -37,5 +37,5 @@
 #include <class_loader/class_loader.hpp>
 #include <moveit/handeye_calibration_solver/handeye_solver_default.h>
 
-CLASS_LOADER_REGISTER_CLASS(moveit_handeye_calibration::HandEyeSolverDefault, 
+CLASS_LOADER_REGISTER_CLASS(moveit_handeye_calibration::HandEyeSolverDefault,
                             moveit_handeye_calibration::HandEyeSolverBase)

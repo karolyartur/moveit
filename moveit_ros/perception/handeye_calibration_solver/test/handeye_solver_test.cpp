@@ -42,7 +42,7 @@
 
 #include <moveit/handeye_calibration_solver/handeye_solver_default.h>
 
-class MoveItHandEyeSolverTester : public ::testing::Test 
+class MoveItHandEyeSolverTester : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -57,8 +57,8 @@ protected:
     moveit_ros_perception_package_path += "/handeye_calibration_solver/test/pose_samples.json";
     std::ifstream ifs(moveit_ros_perception_package_path);
 
-    if(ifs)
-    {  
+    if (ifs)
+    {
       if (reader.parse(ifs, root_))
       {
         solver_ok_ = true;
@@ -72,8 +72,8 @@ protected:
 
   void TearDown() override
   {
-
   }
+
 protected:
   std::unique_ptr<moveit_handeye_calibration::HandEyeSolverDefault> solver_;
   Json::Value root_;

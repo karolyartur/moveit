@@ -42,7 +42,7 @@ const std::string LOGNAME = "handeye_solver_default";
 
 void HandEyeSolverDefault::initialize()
 {
-  solver_names_ = {"Daniilidis1999", "ParkBryan1994", "TsaiLenz1989"};
+  solver_names_ = { "Daniilidis1999", "ParkBryan1994", "TsaiLenz1989" };
   camera_robot_pose_ = Eigen::Isometry3d::Identity();
 }
 
@@ -56,9 +56,8 @@ const Eigen::Isometry3d& HandEyeSolverDefault::getCameraRobotPose()
   return camera_robot_pose_;
 }
 
-bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world, 
-                                 const std::vector<Eigen::Isometry3d>& object_wrt_sensor, 
-                                 SENSOR_MOUNT_TYPE setup,
+bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world,
+                                 const std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup,
                                  const std::string& solver_name)
 {
   // Check the size of the two sets of pose sample equal
@@ -70,13 +69,13 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
 
   char program_name[7] = "python";
   Py_SetProgramName(program_name);
-  static int run_times{0};
-  if (run_times == 0) // Numpy can only be loaded once, otherwise will segfault
+  static int run_times{ 0 };
+  if (run_times == 0)  // Numpy can only be loaded once, otherwise will segfault
   {
     ++run_times;
     Py_Initialize();
     atexit(Py_Finalize);
-  } 
+  }
   ROS_DEBUG_STREAM_NAMED(LOGNAME, "Python C API start");
 
   // Load numpy c api
@@ -86,7 +85,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     return false;
   }
 
-  PyObject *p_name, *p_module, *p_class, *p_instance, *p_func_add_sample, *p_func_solve; 
+  PyObject *p_name, *p_module, *p_class, *p_instance, *p_func_add_sample, *p_func_solve;
   PyObject *p_args, *p_value;
 
   // Import handeye.calibrator python module
@@ -95,7 +94,8 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   Py_DECREF(p_name);
   if (!p_module)
   {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "Failed to load python module: " << "handeye.calibrator");
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Failed to load python module: "
+                                        << "handeye.calibrator");
     PyErr_Print();
     return false;
   }
@@ -111,6 +111,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   }
 
   // Parse sensor mount type
+  p_value = PyString_FromString("");
   if (setup == EYE_TO_HAND)
     p_value = PyString_FromString("Fixed");
   else if (setup == EYE_IN_HAND)
@@ -132,7 +133,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     Py_DECREF(p_class);
     PyErr_Print();
     return false;
-  } 
+  }
   p_instance = PyEval_CallObject(p_class, p_args);
   Py_DECREF(p_args);
   Py_DECREF(p_class);
@@ -158,8 +159,8 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   PyArrayObject *np_arg_eef_wrt_base[pose_num], *np_arg_obj_wrt_sensor[pose_num];
   PyObject *p_array_eef_wrt_base[pose_num], *p_array_obj_wrt_sensor[pose_num];
   PyObject* p_args_sample[pose_num];
-  npy_intp dims[2]{ARRAY_SIZE, ARRAY_SIZE};
-  const int ND{2};
+  npy_intp dims[2]{ ARRAY_SIZE, ARRAY_SIZE };
+  const int nd{ 2 };
   // Using C array to store the pyarray data, which will be automatically freed
   double c_arr_eef_wrt_world[pose_num][ARRAY_SIZE][ARRAY_SIZE];
   double c_arr_obj_wrt_sensor[pose_num][ARRAY_SIZE][ARRAY_SIZE];
@@ -168,7 +169,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     // Convert effector_wrt_world[i] from Eigen::isometry3d to PyArrayObject
     if (toCArray(effector_wrt_world[i], c_arr_eef_wrt_world[i]))
     {
-      p_array_eef_wrt_base[i] = PyArray_SimpleNewFromData(ND, dims, NPY_DOUBLE, (void*)(c_arr_eef_wrt_world[i]));
+      p_array_eef_wrt_base[i] = PyArray_SimpleNewFromData(nd, dims, NPY_DOUBLE, (void*)(c_arr_eef_wrt_world[i]));
       if (!p_array_eef_wrt_base[i])
       {
         ROS_ERROR_STREAM_NAMED(LOGNAME, "Error creating PyArray object");
@@ -178,10 +179,10 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
         return false;
       }
       np_arg_eef_wrt_base[i] = (PyArrayObject*)(p_array_eef_wrt_base[i]);
-      if (PyArray_NDIM(np_arg_eef_wrt_base[i]) == 2) // Check PyArrayObject dims are 4x4
+      if (PyArray_NDIM(np_arg_eef_wrt_base[i]) == 2)  // Check PyArrayObject dims are 4x4
       {
-        npy_intp * py_array_dims = PyArray_DIMS(np_arg_eef_wrt_base[i]);
-        if ( py_array_dims[0] != 4 || py_array_dims[1] != 4)
+        npy_intp* py_array_dims = PyArray_DIMS(np_arg_eef_wrt_base[i]);
+        if (py_array_dims[0] != 4 || py_array_dims[1] != 4)
         {
           ROS_ERROR_STREAM_NAMED(LOGNAME, "Error PyArrayObject dims: " << py_array_dims[0] << "x" << py_array_dims[1]);
           Py_DECREF(np_arg_eef_wrt_base[i]);
@@ -195,7 +196,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     // Convert object_wrt_sensor[i] from Eigen::isometry3d to PyArrayObject
     if (toCArray(object_wrt_sensor[i], c_arr_obj_wrt_sensor[i]))
     {
-      p_array_obj_wrt_sensor[i] = PyArray_SimpleNewFromData(ND, dims, NPY_DOUBLE, (void*)(c_arr_obj_wrt_sensor[i]));
+      p_array_obj_wrt_sensor[i] = PyArray_SimpleNewFromData(nd, dims, NPY_DOUBLE, (void*)(c_arr_obj_wrt_sensor[i]));
       if (!p_array_obj_wrt_sensor[i])
       {
         ROS_ERROR_STREAM_NAMED(LOGNAME, "Error creating PyArray object");
@@ -205,10 +206,10 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
         return false;
       }
       np_arg_obj_wrt_sensor[i] = (PyArrayObject*)(p_array_obj_wrt_sensor[i]);
-      if (PyArray_NDIM(np_arg_obj_wrt_sensor[i]) == 2) // Check PyArrayObject dims are 4x4
+      if (PyArray_NDIM(np_arg_obj_wrt_sensor[i]) == 2)  // Check PyArrayObject dims are 4x4
       {
-        npy_intp * py_array_dims = PyArray_DIMS(np_arg_obj_wrt_sensor[i]);
-        if ( py_array_dims[0] != 4 || py_array_dims[1] != 4)
+        npy_intp* py_array_dims = PyArray_DIMS(np_arg_obj_wrt_sensor[i]);
+        if (py_array_dims[0] != 4 || py_array_dims[1] != 4)
         {
           ROS_ERROR_STREAM_NAMED(LOGNAME, "Error PyArrayObject dims: " << py_array_dims[0] << "x" << py_array_dims[1]);
           Py_DECREF(np_arg_obj_wrt_sensor[i]);
@@ -252,15 +253,15 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     {
       ss << "\n";
       for (size_t n = 0; n < ARRAY_SIZE; n++)
-        ss << *(double *)PyArray_GETPTR2(np_arg_eef_wrt_base[i], m, n) << " ";
+        ss << *(double*)PyArray_GETPTR2(np_arg_eef_wrt_base[i], m, n) << " ";
     }
     ss << "\nnp_arg_obj_wrt_sensor";
     for (size_t m = 0; m < ARRAY_SIZE; m++)
     {
       ss << "\n";
       for (size_t n = 0; n < ARRAY_SIZE; n++)
-        ss << *(double *)PyArray_GETPTR2(np_arg_obj_wrt_sensor[i], m, n) << " ";
-    }  
+        ss << *(double*)PyArray_GETPTR2(np_arg_obj_wrt_sensor[i], m, n) << " ";
+    }
     ROS_DEBUG_STREAM_NAMED(LOGNAME, ss.str());
   }
 
@@ -270,7 +271,8 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   Py_DECREF(p_name);
   if (!p_module)
   {
-    ROS_ERROR_STREAM_NAMED(LOGNAME, "Failed to load python module: " << "handeye.solver");
+    ROS_ERROR_STREAM_NAMED(LOGNAME, "Failed to load python module: "
+                                        << "handeye.solver");
     Py_DECREF(p_instance);
     PyErr_Print();
     return false;
@@ -310,10 +312,11 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   }
 
   // Call 'solve' method to solve AX=XB problem
-  p_value = PyEval_CallObjectWithKeywords(p_func_solve, NULL, p_args);
+  p_value = PyEval_CallObjectWithKeywords(p_func_solve, nullptr, p_args);
   Py_DECREF(p_args);
   Py_DECREF(p_func_solve);
-  for (int i = 0; i < pose_num; ++i) Py_DECREF(p_args_sample[i]);
+  for (size_t i = 0; i < pose_num; ++i)
+    Py_DECREF(p_args_sample[i]);
   Py_DECREF(p_instance);
   if (!p_value)
   {
@@ -322,12 +325,12 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     return false;
   }
   PyArrayObject* np_ret = (PyArrayObject*)p_value;
-  if (!PyArray_Check(p_value) || PyArray_NDIM(np_ret) != 2 || PyArray_NBYTES(np_ret) != sizeof(double)*16)
+  if (!PyArray_Check(p_value) || PyArray_NDIM(np_ret) != 2 || PyArray_NBYTES(np_ret) != sizeof(double) * 16)
   {
     ROS_ERROR_STREAM_NAMED(LOGNAME, "Did not return a valid array");
     Py_DECREF(p_value);
     PyErr_Print();
-    return false; 
+    return false;
   }
 
   std::stringstream ss;
@@ -337,7 +340,7 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
     ss << "\n";
     for (size_t n = 0; n < ARRAY_SIZE; n++)
     {
-      double item = *(double *)PyArray_GETPTR2(np_ret, m, n);
+      double item = *(double*)PyArray_GETPTR2(np_ret, m, n);
       camera_robot_pose_(m, n) = item;
       ss << item << " ";
     }
@@ -347,9 +350,9 @@ bool HandEyeSolverDefault::solve(const std::vector<Eigen::Isometry3d>& effector_
   Py_DECREF(p_value);
   ROS_DEBUG_STREAM_NAMED(LOGNAME, "Python C API end");
   return true;
-}  
+}
 
-bool HandEyeSolverDefault::toCArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE])
+bool HandEyeSolverDefault::toCArray(const Eigen::Isometry3d& pose, double (*c_arr)[ARRAY_SIZE])
 {
   const Eigen::MatrixXd& mat = pose.matrix();
 
@@ -367,4 +370,4 @@ bool HandEyeSolverDefault::toCArray(const Eigen::Isometry3d& pose, double (* c_a
   }
 }
 
-} // namespace moveit_handeye_calibration
+}  // namespace moveit_handeye_calibration

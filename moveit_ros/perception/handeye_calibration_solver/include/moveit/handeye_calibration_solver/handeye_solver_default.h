@@ -40,7 +40,16 @@
 #include <moveit/handeye_calibration_solver/handeye_solver_base.h>
 #include <ros/ros.h>
 
+// Disable clang warnings
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-register"
 #include <Python.h>
+#pragma clang diagnostic pop
+#elif defined(__GNUC__) || defined(__GNUG__)
+#include <Python.h>
+#endif
+
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
@@ -58,20 +67,18 @@ public:
 
   virtual const std::vector<std::string>& getSolverNames() override;
 
-  virtual bool solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world, 
-                     const std::vector<Eigen::Isometry3d>& object_wrt_sensor, 
-                     SENSOR_MOUNT_TYPE setup = EYE_TO_HAND,
+  virtual bool solve(const std::vector<Eigen::Isometry3d>& effector_wrt_world,
+                     const std::vector<Eigen::Isometry3d>& object_wrt_sensor, SENSOR_MOUNT_TYPE setup = EYE_TO_HAND,
                      const std::string& solver_name = "") override;
 
-  bool toCArray(const Eigen::Isometry3d& pose, double (* c_arr)[ARRAY_SIZE]);
-  virtual const Eigen::Isometry3d& getCameraRobotPose() override; 
+  bool toCArray(const Eigen::Isometry3d& pose, double (*c_arr)[ARRAY_SIZE]);
+  virtual const Eigen::Isometry3d& getCameraRobotPose() override;
 
 private:
-
-  std::vector<std::string> solver_names_;   // Solver algorithm names
-  Eigen::Isometry3d camera_robot_pose_;     // Computed camera-robot pose
+  std::vector<std::string> solver_names_;  // Solver algorithm names
+  Eigen::Isometry3d camera_robot_pose_;    // Computed camera-robot pose
 };
 
-} // namespace moveit_handeye_calibration
+}  // namespace moveit_handeye_calibration
 
 #endif
