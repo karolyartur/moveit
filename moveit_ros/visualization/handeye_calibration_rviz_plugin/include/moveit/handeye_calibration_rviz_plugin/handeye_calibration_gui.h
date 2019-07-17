@@ -62,10 +62,9 @@ public:
   ~HandEyeCalibrationGui() override;
 
   virtual void load(const rviz::Config& config);
-  virtual void save(rviz::Config config) const;  
+  virtual void save(rviz::Config config) const;
 
 private:
-
   // ******************************************************************************************
   // Qt Components
   // ******************************************************************************************
@@ -81,6 +80,6 @@ private:
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
 };
 
-} // namedist moveit_rviz_plugin
+}  // namedist moveit_rviz_plugin
 
 #endif

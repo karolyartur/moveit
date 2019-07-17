@@ -38,7 +38,7 @@
 #define MOVEIT_HANDEYE_CALIBRATION_RVIZ_PLUGIN_HANDEYE_TARGET_WIDGET_
 
 // qt
-#include <QSet> 
+#include <QSet>
 #include <QLabel>
 #include <QString>
 #include <QLineEdit>
@@ -86,7 +86,9 @@ class RosTopicComboBox : public QComboBox
 {
   Q_OBJECT
 public:
-  explicit RosTopicComboBox(QWidget* parent = Q_NULLPTR) : QComboBox(parent){}
+  explicit RosTopicComboBox(QWidget* parent = Q_NULLPTR) : QComboBox(parent)
+  {
+  }
   ~RosTopicComboBox() = default;
 
   void addMsgsFilterType(QString msgs_type);
@@ -102,11 +104,10 @@ protected:
   QSet<QString> image_topics_;
 };
 
-class TargetTabWidget: public QWidget
+class TargetTabWidget : public QWidget
 {
   Q_OBJECT
 public:
-  
   explicit TargetTabWidget(QWidget* parent = Q_NULLPTR);
   ~TargetTabWidget()
   {
@@ -155,9 +156,8 @@ Q_SIGNALS:
   void opticalFrameChanged(const std::string& frame_id);
 
 private:
-
-  // ************************************************************** 
-  // Qt components   
+  // **************************************************************
+  // Qt components
   // **************************************************************
 
   // Target intrinsic params
@@ -176,8 +176,8 @@ private:
   QPushButton* create_target_btn_;
   QPushButton* save_target_btn_;
 
-  // ************************************************************** 
-  // Variables   
+  // **************************************************************
+  // Variables
   // **************************************************************
 
   cv::Mat target_image_;
@@ -186,8 +186,8 @@ private:
 
   sensor_msgs::CameraInfoPtr camera_info_;
 
-  // ************************************************************** 
-  // Ros components   
+  // **************************************************************
+  // Ros components
   // **************************************************************
   ros::NodeHandle nh_;
   std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeTargetBase> > target_plugins_loader_;
@@ -198,8 +198,8 @@ private:
   ros::Subscriber camerainfo_sub_;
   // tf broadcaster
   tf2_ros::TransformBroadcaster tf_pub_;
-}; 
+};
 
-} // namedist moveit_rviz_plugin
+}  // namedist moveit_rviz_plugin
 
 #endif

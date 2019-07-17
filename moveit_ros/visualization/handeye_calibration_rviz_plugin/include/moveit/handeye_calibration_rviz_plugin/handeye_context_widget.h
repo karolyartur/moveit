@@ -83,8 +83,7 @@ class TFFrameNameComboBox : public QComboBox
 {
   Q_OBJECT
 public:
-  TFFrameNameComboBox(FRAME_SOURCE source = ROBOT_FRAME, QWidget* parent = 0) 
-  : QComboBox(parent), frame_source_(source)
+  TFFrameNameComboBox(FRAME_SOURCE source = ROBOT_FRAME, QWidget* parent = 0) : QComboBox(parent), frame_source_(source)
   {
     robot_model_loader_.reset(new robot_model_loader::RobotModelLoader("robot_description"));
     frame_manager_.reset(new rviz::FrameManager());
@@ -101,11 +100,10 @@ protected:
   void mousePressEvent(QMouseEvent* event);
 
 private:
-
   FRAME_SOURCE frame_source_;
   std::unique_ptr<rviz::FrameManager> frame_manager_;
   robot_model_loader::RobotModelLoaderConstPtr robot_model_loader_;
-}; 
+};
 
 // **************************************************
 // Custom slider class
@@ -115,13 +113,11 @@ class SliderWidget : public QWidget
   Q_OBJECT
 
 public:
-
   SliderWidget(QWidget* parent, std::string name, double min, double max);
 
   ~SliderWidget() override = default;
 
   double getValue();
- 
   void setValue(double value);
 
   QLabel* label_;
@@ -142,17 +138,15 @@ Q_SIGNALS:
   void valueChanged(double value);
 
 private:
-
   // Max & min position
   double max_position_;
   double min_position_;
 };
 
-class ContextTabWidget: public QWidget
+class ContextTabWidget : public QWidget
 {
   Q_OBJECT
 public:
-  
   explicit ContextTabWidget(QWidget* parent = Q_NULLPTR);
   ~ContextTabWidget()
   {
@@ -170,10 +164,10 @@ public:
 
   static shape_msgs::Mesh getCameraFOVMesh(const sensor_msgs::CameraInfo& camera_info, double maxdist);
 
-  visualization_msgs::Marker getCameraFOVMarker(const Eigen::Isometry3d& pose, const shape_msgs::Mesh& mesh, 
+  visualization_msgs::Marker getCameraFOVMarker(const Eigen::Isometry3d& pose, const shape_msgs::Mesh& mesh,
                                                 rvt::colors color, double alpha, std::string frame_id);
 
-  visualization_msgs::Marker getCameraFOVMarker(const geometry_msgs::Pose& pose, const shape_msgs::Mesh& mesh, 
+  visualization_msgs::Marker getCameraFOVMarker(const geometry_msgs::Pose& pose, const shape_msgs::Mesh& mesh,
                                                 rvt::colors color, double alpha, std::string frame_id);
 
   void setCameraPose(double tx, double ty, double tz, double rx, double ry, double rz);
@@ -207,9 +201,8 @@ Q_SIGNALS:
   void frameNameChanged(std::map<std::string, std::string> names);
 
 private:
-
-  // ************************************************************** 
-  // Qt components   
+  // **************************************************************
+  // Qt components
   // **************************************************************
 
   // Calibration algorithm, sensor mount type area
@@ -225,8 +218,8 @@ private:
   // Initial camera pose
   std::map<std::string, SliderWidget*> guess_pose_;
 
-  // ************************************************************** 
-  // Variables   
+  // **************************************************************
+  // Variables
   // **************************************************************
 
   sensor_msgs::CameraInfoPtr camera_info_;
@@ -239,17 +232,16 @@ private:
   // Transform from camera to fov
   Eigen::Isometry3d fov_pose_;
 
-  // ************************************************************** 
-  // Ros components   
+  // **************************************************************
+  // Ros components
   // **************************************************************
 
   moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
+};
 
-}; 
-
-} // namespace moveit_rviz_plugin
+}  // namespace moveit_rviz_plugin
 
 #endif

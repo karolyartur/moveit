@@ -41,12 +41,11 @@
 
 namespace moveit_rviz_plugin
 {
-HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
-  : rviz::Panel(parent)
+HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent) : rviz::Panel(parent)
 {
   setFixedSize(695, 460);
   // Basic widget container
-  QVBoxLayout *layout = new QVBoxLayout();
+  QVBoxLayout* layout = new QVBoxLayout();
   setLayout(layout);
 
   // Description
@@ -57,30 +56,29 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
   layout->addWidget(description);
 
   // Tab menu ------------------------------------------------------------
-  QTabWidget *tabs = new QTabWidget(this);
+  QTabWidget* tabs = new QTabWidget(this);
   tab_target_ = new TargetTabWidget();
-  
+
   tf_tools_.reset(new rviz_visual_tools::TFVisualTools(250));
-  
+
   tab_context_ = new ContextTabWidget();
   tab_context_->setTFTool(tf_tools_);
-  connect(tab_target_, SIGNAL(cameraInfoChanged(sensor_msgs::CameraInfo)), 
-          tab_context_, SLOT(setCameraInfo(sensor_msgs::CameraInfo)));
-  connect(tab_target_, SIGNAL(opticalFrameChanged(const std::string&)), 
-          tab_context_, SLOT(setOpticalFrame(const std::string&)));
+  connect(tab_target_, SIGNAL(cameraInfoChanged(sensor_msgs::CameraInfo)), tab_context_,
+          SLOT(setCameraInfo(sensor_msgs::CameraInfo)));
+  connect(tab_target_, SIGNAL(opticalFrameChanged(const std::string&)), tab_context_,
+          SLOT(setOpticalFrame(const std::string&)));
 
   tab_control_ = new ControlTabWidget();
   tab_control_->setTFTool(tf_tools_);
-  connect(tab_context_, SIGNAL(sensorMountTypeChanged(int)), 
-          tab_control_, SLOT(UpdateSensorMountType(int)));
-  connect(tab_context_, SIGNAL(frameNameChanged(std::map<std::string, std::string>)),
-          tab_control_, SLOT(updateFrameNames(std::map<std::string, std::string>)));
-  connect(tab_control_, SIGNAL(sensorPoseUpdate(double, double, double, double, double, double)),
-          tab_context_, SLOT(updateCameraPose(double, double, double, double, double, double)));
+  connect(tab_context_, SIGNAL(sensorMountTypeChanged(int)), tab_control_, SLOT(UpdateSensorMountType(int)));
+  connect(tab_context_, SIGNAL(frameNameChanged(std::map<std::string, std::string>)), tab_control_,
+          SLOT(updateFrameNames(std::map<std::string, std::string>)));
+  connect(tab_control_, SIGNAL(sensorPoseUpdate(double, double, double, double, double, double)), tab_context_,
+          SLOT(updateCameraPose(double, double, double, double, double, double)));
 
-  tabs->addTab(tab_target_,"Target");
-  tabs->addTab(tab_context_,"Context");
-  tabs->addTab(tab_control_,"Calibrate");
+  tabs->addTab(tab_target_, "Target");
+  tabs->addTab(tab_context_, "Context");
+  tabs->addTab(tab_control_, "Calibrate");
   layout->addWidget(tabs);
 
   ROS_INFO_STREAM("handeye calibration gui created.");
@@ -88,7 +86,7 @@ HandEyeCalibrationGui::HandEyeCalibrationGui(QWidget* parent)
 
 HandEyeCalibrationGui::~HandEyeCalibrationGui() = default;
 
-void HandEyeCalibrationGui::save( rviz::Config config ) const
+void HandEyeCalibrationGui::save(rviz::Config config) const
 {
   tab_target_->saveWidget(config);
   tab_context_->saveWidget(config);
@@ -97,7 +95,7 @@ void HandEyeCalibrationGui::save( rviz::Config config ) const
 }
 
 // Load all configuration data for this panel from the given Config object.
-void HandEyeCalibrationGui::load( const rviz::Config& config )
+void HandEyeCalibrationGui::load(const rviz::Config& config)
 {
   rviz::Panel::load(config);
 
@@ -108,4 +106,4 @@ void HandEyeCalibrationGui::load( const rviz::Config& config )
   ROS_INFO_STREAM("handeye calibration gui loaded.");
 }
 
-} // namespace moveit_rviz_plugin
+}  // namespace moveit_rviz_plugin

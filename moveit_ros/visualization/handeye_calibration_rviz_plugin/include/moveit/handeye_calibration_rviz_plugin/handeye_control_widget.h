@@ -82,7 +82,6 @@ class ProgressBarWidget : public QWidget
   Q_OBJECT
 
 public:
-
   ProgressBarWidget(QWidget* parent, int min = 0, int max = 0, int value = 0);
 
   ~ProgressBarWidget() override = default;
@@ -98,11 +97,10 @@ public:
   QProgressBar* bar_;
 };
 
-class ControlTabWidget: public QWidget
+class ControlTabWidget : public QWidget
 {
   Q_OBJECT
 public:
-  
   explicit ControlTabWidget(QWidget* parent = Q_NULLPTR);
   ~ControlTabWidget()
   {
@@ -119,8 +117,8 @@ public:
 
   void setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub);
 
-  void addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, 
-                               const geometry_msgs::TransformStamped& bTe, int id);
+  void addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, const geometry_msgs::TransformStamped& bTe,
+                               int id);
 
   bool loadSolverPlugin(std::vector<std::string>& plugins);
 
@@ -177,9 +175,8 @@ private Q_SLOTS:
   void executeFinished();
 
 private:
-
-  // ************************************************************** 
-  // Qt components   
+  // **************************************************************
+  // Qt components
   // **************************************************************
 
   QTreeView* sample_tree_view_;
@@ -208,9 +205,8 @@ private:
   QFutureWatcher<void>* plan_watcher_;
   QFutureWatcher<void>* execution_watcher_;
 
-
-  // ************************************************************** 
-  // Variables   
+  // **************************************************************
+  // Variables
   // **************************************************************
 
   mhc::SENSOR_MOUNT_TYPE sensor_mount_type_;
@@ -225,8 +221,8 @@ private:
   bool auto_started_;
   bool planning_res_;
 
-  // ************************************************************** 
-  // Ros components   
+  // **************************************************************
+  // Ros components
   // **************************************************************
 
   ros::NodeHandle nh_;
@@ -235,12 +231,12 @@ private:
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   rviz_visual_tools::TFVisualToolsPtr tf_tools_;
-  std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase> > solver_plugins_loader_;
+  std::unique_ptr<pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase>> solver_plugins_loader_;
   pluginlib::UniquePtr<moveit_handeye_calibration::HandEyeSolverBase> solver_;
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
   moveit::planning_interface::MoveGroupInterfacePtr move_group_;
   moveit::planning_interface::MoveGroupInterface::PlanPtr current_plan_;
 };
 
-} // namespace moveit_rviz_plugin
+}  // namespace moveit_rviz_plugin
 #endif

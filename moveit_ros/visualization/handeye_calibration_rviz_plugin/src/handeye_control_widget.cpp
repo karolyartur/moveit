@@ -40,8 +40,7 @@ namespace moveit_rviz_plugin
 {
 const std::string LOGNAME = "handeye_control_widget";
 
-ProgressBarWidget::ProgressBarWidget(QWidget* parent, int min, int max, int value)
-  : QWidget(parent)
+ProgressBarWidget::ProgressBarWidget(QWidget* parent, int min, int max, int value) : QWidget(parent)
 {
   QHBoxLayout* row = new QHBoxLayout(this);
   row->setContentsMargins(0, 10, 0, 10);
@@ -94,17 +93,17 @@ int ProgressBarWidget::getValue()
 }
 
 ControlTabWidget::ControlTabWidget(QWidget* parent)
-  : QWidget(parent),
-    tf_buffer_(new tf2_ros::Buffer()), 
-    tf_listener_(*tf_buffer_), 
-    sensor_mount_type_(mhc::EYE_TO_HAND),
-    solver_plugins_loader_(nullptr),
-    solver_(nullptr),
-    move_group_(nullptr),
-    camera_robot_pose_(Eigen::Isometry3d::Identity()),
-    auto_started_(false),
-    planning_res_(false)
-    // spinner_(0, &callback_queue_)
+  : QWidget(parent)
+  , tf_buffer_(new tf2_ros::Buffer())
+  , tf_listener_(*tf_buffer_)
+  , sensor_mount_type_(mhc::EYE_TO_HAND)
+  , solver_plugins_loader_(nullptr)
+  , solver_(nullptr)
+  , move_group_(nullptr)
+  , camera_robot_pose_(Eigen::Isometry3d::Identity())
+  , auto_started_(false)
+  , planning_res_(false)
+// spinner_(0, &callback_queue_)
 {
   QVBoxLayout* layout = new QVBoxLayout();
   this->setLayout(layout);
@@ -208,8 +207,8 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
     fillSolverTypes(plugins);
 
   // Fill in available planning group names
-  planning_scene_monitor_.reset(new planning_scene_monitor::PlanningSceneMonitor("robot_description", tf_buffer_, 
-                                                                                 "planning_scene_monitor"));
+  planning_scene_monitor_.reset(
+      new planning_scene_monitor::PlanningSceneMonitor("robot_description", tf_buffer_, "planning_scene_monitor"));
   if (planning_scene_monitor_)
   {
     planning_scene_monitor_->startSceneMonitor("move_group/monitored_planning_scene");
@@ -224,7 +223,8 @@ ControlTabWidget::ControlTabWidget(QWidget* parent)
         {
           moveit::planning_interface::MoveGroupInterface::Options opt(group_name_->currentText().toStdString());
           opt.node_handle_ = nh_;
-          move_group_.reset(new moveit::planning_interface::MoveGroupInterface(opt, tf_buffer_, ros::WallDuration(30, 0)));
+          move_group_.reset(
+              new moveit::planning_interface::MoveGroupInterface(opt, tf_buffer_, ros::WallDuration(30, 0)));
         }
         catch (std::exception& ex)
         {
@@ -260,7 +260,7 @@ void ControlTabWidget::loadWidget(const rviz::Config& config)
 void ControlTabWidget::saveWidget(rviz::Config& config)
 {
   config.mapSetValue("solver", calibration_solver_->currentText());
-  config.mapSetValue("group", group_name_->currentText()); 
+  config.mapSetValue("group", group_name_->currentText());
 }
 
 bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
@@ -269,14 +269,12 @@ bool ControlTabWidget::loadSolverPlugin(std::vector<std::string>& plugins)
   {
     try
     {
-      solver_plugins_loader_.reset(
-          new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase>("moveit_ros_perception", 
-                                                                 "moveit_handeye_calibration::HandEyeSolverBase"));
+      solver_plugins_loader_.reset(new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeSolverBase>(
+          "moveit_ros_perception", "moveit_handeye_calibration::HandEyeSolverBase"));
     }
     catch (pluginlib::PluginlibException& ex)
     {
-      QMessageBox::warning(this, tr("Exception while creating handeye solver plugin loader "),
-                                 tr(ex.what()));
+      QMessageBox::warning(this, tr("Exception while creating handeye solver plugin loader "), tr(ex.what()));
       return false;
     }
   }
@@ -299,33 +297,33 @@ bool ControlTabWidget::createSolverInstance(const std::string& plugin_name)
     solver_ = nullptr;
   }
 
-  return solver_!=nullptr;
+  return solver_ != nullptr;
 }
 
 void ControlTabWidget::fillSolverTypes(const std::vector<std::string>& plugins)
 {
-  for (const std::string& plugin: plugins)
+  for (const std::string& plugin : plugins)
     if (!plugin.empty() && createSolverInstance(plugin))
     {
       const std::vector<std::string>& solvers = solver_->getSolverNames();
-      for (const std::string& solver: solvers)
+      for (const std::string& solver : solvers)
       {
-        std::string solver_name = plugin + "/" + solver; // solver name format is "plugin_name/solver_name"
-          calibration_solver_->addItem(tr(solver_name.c_str()));
+        std::string solver_name = plugin + "/" + solver;  // solver name format is "plugin_name/solver_name"
+        calibration_solver_->addItem(tr(solver_name.c_str()));
       }
     }
 }
 
 std::string ControlTabWidget::parseSolverName(const std::string& solver_name, char delimiter)
 {
-   std::vector<std::string> tokens;
-   std::string token;
-   std::istringstream tokenStream(solver_name);
-   while (std::getline(tokenStream, token, delimiter))
-   {
-      tokens.push_back(token);
-   }
-   return tokens.back();
+  std::vector<std::string> tokens;
+  std::string token;
+  std::istringstream tokenStream(solver_name);
+  while (std::getline(tokenStream, token, delimiter))
+  {
+    tokens.push_back(token);
+  }
+  return tokens.back();
 }
 
 bool ControlTabWidget::takeTranformSamples()
@@ -361,8 +359,8 @@ bool ControlTabWidget::solveCameraRobotPose()
 {
   if (solver_ && !calibration_solver_->currentText().isEmpty())
   {
-    bool res = solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_, 
-                    parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
+    bool res = solver_->solve(effector_wrt_world_, object_wrt_sensor_, sensor_mount_type_,
+                              parseSolverName(calibration_solver_->currentText().toStdString(), '/'));
     if (res)
     {
       camera_robot_pose_ = solver_->getCameraRobotPose();
@@ -371,7 +369,7 @@ bool ControlTabWidget::solveCameraRobotPose()
       Eigen::Vector3d t = camera_robot_pose_.translation();
       Eigen::Vector3d r = camera_robot_pose_.rotation().eulerAngles(0, 1, 2);
       Q_EMIT sensorPoseUpdate(t[0], t[1], t[2], r[0], r[1], r[2]);
-      
+
       // Publish camera pose tf
       std::string& from_frame = frame_names_[from_frame_tag_];
       std::string& to_frame = frame_names_["sensor"];
@@ -397,8 +395,8 @@ bool ControlTabWidget::solveCameraRobotPose()
 bool ControlTabWidget::frameNamesEmpty()
 {
   // All of four frame names needed for getting the pair of two tf transforms
-  if(frame_names_["sensor"].empty() || frame_names_["object"].empty() || 
-     frame_names_["base"].empty() || frame_names_["eef"].empty())
+  if (frame_names_["sensor"].empty() || frame_names_["object"].empty() || frame_names_["base"].empty() ||
+      frame_names_["eef"].empty())
   {
     QMessageBox::warning(this, tr("Empty Frame Name"), tr("At least one of the four frame names is empty."));
     return true;
@@ -423,7 +421,7 @@ void ControlTabWidget::setTFTool(rviz_visual_tools::TFVisualToolsPtr& tf_pub)
   tf_tools_.reset(tf_pub.get());
 }
 
-void ControlTabWidget::addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo, 
+void ControlTabWidget::addPoseSampleToTreeView(const geometry_msgs::TransformStamped& cTo,
                                                const geometry_msgs::TransformStamped& bTe, int id)
 {
   std::string item_name = "Sample " + std::to_string(id);
@@ -451,9 +449,15 @@ void ControlTabWidget::UpdateSensorMountType(int index)
     sensor_mount_type_ = static_cast<mhc::SENSOR_MOUNT_TYPE>(index);
     switch (sensor_mount_type_)
     {
-      case mhc::EYE_TO_HAND: from_frame_tag_ = "base";break;
-      case mhc::EYE_IN_HAND: from_frame_tag_ = "eef"; break; 
-      default: ROS_ERROR_STREAM_NAMED(LOGNAME, "Error sensor mount type."); break;
+      case mhc::EYE_TO_HAND:
+        from_frame_tag_ = "base";
+        break;
+      case mhc::EYE_IN_HAND:
+        from_frame_tag_ = "eef";
+        break;
+      default:
+        ROS_ERROR_STREAM_NAMED(LOGNAME, "Error sensor mount type.");
+        break;
     }
   }
 }
@@ -479,7 +483,8 @@ void ControlTabWidget::takeSampleBtnClicked(bool clicked)
   if (planning_scene_monitor_)
   {
     planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now(), 0.1);
-    const planning_scene_monitor::LockedPlanningSceneRO& ps = planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+    const planning_scene_monitor::LockedPlanningSceneRO& ps =
+        planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
     if (ps)
     {
       const robot_state::RobotState& state = ps->getCurrentState();
@@ -526,9 +531,9 @@ void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
     return;
   }
 
-  QString file_name = QFileDialog::getSaveFileName(this, tr("Save Camera Robot Pose"), "",
-                                                  tr("Target File (*.launch);;All Files (*)"));
-  
+  QString file_name =
+      QFileDialog::getSaveFileName(this, tr("Save Camera Robot Pose"), "", tr("Target File (*.launch);;All Files (*)"));
+
   if (file_name.isEmpty())
     return;
 
@@ -536,7 +541,7 @@ void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
     file_name += ".launch";
 
   QFile file(file_name);
-  if (!file.open(QIODevice::WriteOnly)) 
+  if (!file.open(QIODevice::WriteOnly))
   {
     QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
     return;
@@ -549,20 +554,19 @@ void ControlTabWidget::saveCameraPoseBtnClicked(bool clicked)
   std::stringstream ss;
   ss << "<launch>\n";
   ss << "<node pkg=\"tf2_ros\" type=\"static_transform_publisher\" name=\"camera_link_broadcaster\"\n";
-  ss << "      args=\"" << t[0] << " " << t[1] << " " << t[2] << " "
-                        << r[0] << " " << r[1] << " " << r[2] << " "
-                        << from_frame << " " << to_frame << "\" />\n";
+  ss << "      args=\"" << t[0] << " " << t[1] << " " << t[2] << " " << r[0] << " " << r[1] << " " << r[2] << " "
+     << from_frame << " " << to_frame << "\" />\n";
   ss << "</launch>";
   out << ss.str().c_str();
 }
 
 void ControlTabWidget::planningGroupNameChanged(const QString& text)
 {
-  if(!text.isEmpty())
+  if (!text.isEmpty())
   {
     if (move_group_ && move_group_->getName() == text.toStdString())
       return;
-    
+
     try
     {
       moveit::planning_interface::MoveGroupInterface::Options opt(group_name_->currentText().toStdString());
@@ -573,7 +577,7 @@ void ControlTabWidget::planningGroupNameChanged(const QString& text)
       joint_states_.clear();
       auto_progress_->setMax(0);
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
       ROS_ERROR_NAMED(LOGNAME, "%s", e.what());
     }
@@ -592,9 +596,9 @@ void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
     return;
   }
 
-  QString file_name = QFileDialog::getSaveFileName(this, tr("Save Joint States"), "",
-                                                   tr("Target File (*.yaml);;All Files (*)"));
-  
+  QString file_name =
+      QFileDialog::getSaveFileName(this, tr("Save Joint States"), "", tr("Target File (*.yaml);;All Files (*)"));
+
   if (file_name.isEmpty())
     return;
 
@@ -602,7 +606,7 @@ void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
     file_name += ".yaml";
 
   QFile file(file_name);
-  if (!file.open(QIODevice::WriteOnly)) 
+  if (!file.open(QIODevice::WriteOnly))
   {
     QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
     return;
@@ -638,14 +642,14 @@ void ControlTabWidget::saveJointStateBtnClicked(bool clicked)
 
 void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
 {
-  QString file_name = QFileDialog::getOpenFileName(this, tr("Load Joint States"), "",
-                                                   tr("Target File (*.yaml);;All Files (*)"));
+  QString file_name =
+      QFileDialog::getOpenFileName(this, tr("Load Joint States"), "", tr("Target File (*.yaml);;All Files (*)"));
 
   if (file_name.isEmpty() || !file_name.endsWith(".yaml"))
     return;
 
   QFile file(file_name);
-  if (!file.open(QIODevice::ReadOnly)) 
+  if (!file.open(QIODevice::ReadOnly))
   {
     QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
     return;
@@ -672,7 +676,7 @@ void ControlTabWidget::loadJointStateBtnClicked(bool clicked)
       ROS_ERROR_STREAM_NAMED(LOGNAME, "Can't find 'joint_names' in the openned file.");
       return;
     }
-    
+
     // Read joint values
     const YAML::Node& values = doc["joint_values"];
     if (!values.IsNull() && values.IsSequence())
@@ -746,8 +750,8 @@ void ControlTabWidget::computePlan()
   // Get current joint state as start state
   robot_state::RobotStatePtr start_state = move_group_->getCurrentState();
   planning_scene_monitor_->waitForCurrentRobotState(ros::Time::now(), 0.1);
-  const planning_scene_monitor::LockedPlanningSceneRO& ps = 
-                  planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
+  const planning_scene_monitor::LockedPlanningSceneRO& ps =
+      planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
   if (ps)
     start_state.reset(new robot_state::RobotState(ps->getCurrentState()));
 
@@ -761,7 +765,7 @@ void ControlTabWidget::computePlan()
     current_plan_.reset(new moveit::planning_interface::MoveGroupInterface::Plan());
     planning_res_ = (move_group_->plan(*current_plan_) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
 
-    if(planning_res_)
+    if (planning_res_)
       ROS_DEBUG_STREAM_NAMED(LOGNAME, "Planning succeed.");
     else
       ROS_ERROR_STREAM_NAMED(LOGNAME, "Planning failed.");
@@ -796,7 +800,8 @@ void ControlTabWidget::planFinished()
 {
   auto_plan_btn_->setEnabled(true);
   if (!planning_res_)
-    QMessageBox::warning(this, tr("Error"), tr("Please check if move_group is started or there are recorded joint states."));
+    QMessageBox::warning(this, tr("Error"),
+                         tr("Please check if move_group is started or there are recorded joint states."));
   ROS_DEBUG_NAMED(LOGNAME, "Plan finished");
 }
 
@@ -805,7 +810,7 @@ void ControlTabWidget::executeFinished()
   auto_execute_btn_->setEnabled(true);
   if (planning_res_)
   {
-    auto_progress_->setValue(auto_progress_->getValue()+1);
+    auto_progress_->setValue(auto_progress_->getValue() + 1);
     if (!frameNamesEmpty())
       takeTranformSamples();
 
@@ -817,7 +822,7 @@ void ControlTabWidget::executeFinished()
 
 void ControlTabWidget::autoSkipBtnClicked(bool clicked)
 {
-  auto_progress_->setValue(auto_progress_->getValue()+1);
+  auto_progress_->setValue(auto_progress_->getValue() + 1);
 }
 
-} // namespace moveit_rviz_plugin
+}  // namespace moveit_rviz_plugin

@@ -64,7 +64,7 @@ bool RosTopicComboBox::getFilteredTopics()
       if (message_types_.contains(QString(topic_info.datatype.c_str())))
       {
         image_topics_.insert(QString(topic_info.name.c_str()));
-      }    
+      }
     }
   }
 
@@ -87,8 +87,8 @@ void RosTopicComboBox::mousePressEvent(QMouseEvent* event)
 TargetTabWidget::TargetTabWidget(QWidget* parent)
   : QWidget(parent), nh_("~"), it_(nh_), target_plugins_loader_(nullptr), target_(nullptr)
 {
-   // Target setting tab area -----------------------------------------------
-  QHBoxLayout * layout = new QHBoxLayout();
+  // Target setting tab area -----------------------------------------------
+  QHBoxLayout* layout = new QHBoxLayout();
   this->setLayout(layout);
   QVBoxLayout* layout_left = new QVBoxLayout();
   layout->addLayout(layout_left);
@@ -126,7 +126,7 @@ TargetTabWidget::TargetTabWidget(QWidget* parent)
   layout_left_top->addRow("Marker_Size_(pixels)", target_params_["marker_size"]);
 
   target_params_["marker_dist"]->setText(QString("20"));
-  target_params_["marker_dist"]->setValidator(new QIntValidator(10,200));
+  target_params_["marker_dist"]->setValidator(new QIntValidator(10, 200));
   layout_left_top->addRow("Marker_Dist_(pixels)", target_params_["marker_dist"]);
 
   target_params_["marker_border"]->setText(QString("1"));
@@ -142,14 +142,14 @@ TargetTabWidget::TargetTabWidget(QWidget* parent)
   ros_topics_.insert(std::make_pair("image_topic", new RosTopicComboBox(this)));
   ros_topics_["image_topic"]->addMsgsFilterType("sensor_msgs/Image");
   layout_left_bottom->addRow("Image Topic", ros_topics_["image_topic"]);
-  connect(ros_topics_["image_topic"], SIGNAL(activated(const QString&)), 
-          this, SLOT(imageTopicComboboxChanged(const QString&)));
-  
+  connect(ros_topics_["image_topic"], SIGNAL(activated(const QString&)), this,
+          SLOT(imageTopicComboboxChanged(const QString&)));
+
   ros_topics_.insert(std::make_pair("camera_info_topic", new RosTopicComboBox(this)));
   ros_topics_["camera_info_topic"]->addMsgsFilterType("sensor_msgs/CameraInfo");
   layout_left_bottom->addRow("CameraInfo Topic", ros_topics_["camera_info_topic"]);
-  connect(ros_topics_["camera_info_topic"], SIGNAL(activated(const QString&)), 
-          this, SLOT(cameraInfoComboBoxChanged(const QString&)));
+  connect(ros_topics_["camera_info_topic"], SIGNAL(activated(const QString&)), this,
+          SLOT(cameraInfoComboBoxChanged(const QString&)));
 
   target_real_dims_.insert(std::make_pair("marker_size_real", new QLineEdit()));
   target_real_dims_.insert(std::make_pair("marker_dist_real", new QLineEdit()));
@@ -213,9 +213,9 @@ void TargetTabWidget::loadWidget(const rviz::Config& config)
 
   int param_int;
   for (const std::pair<const std::string, QLineEdit*>& param : target_params_)
-    if (config.mapGetInt(param.first.c_str(), &param_int)) 
+    if (config.mapGetInt(param.first.c_str(), &param_int))
       param.second->setText(std::to_string(param_int).c_str());
-  
+
   for (const std::pair<const std::string, RosTopicComboBox*>& topic : ros_topics_)
   {
     QString topic_name;
@@ -238,7 +238,7 @@ void TargetTabWidget::loadWidget(const rviz::Config& config)
             camerainfo_sub_ = nh_.subscribe(topic_name.toStdString(), 1, &TargetTabWidget::cameraInfoCallback, this);
           }
         }
-        catch(const image_transport::TransportLoadException& e)
+        catch (const image_transport::TransportLoadException& e)
         {
           ROS_ERROR_STREAM_NAMED(LOGNAME, "Subscribe to " << topic_name.toStdString() << " fail: " << e.what());
         }
@@ -249,7 +249,7 @@ void TargetTabWidget::loadWidget(const rviz::Config& config)
   for (const std::pair<const std::string, QLineEdit*>& param : target_real_dims_)
   {
     float param_double;
-    if (config.mapGetFloat(param.first.c_str(), &param_double)) 
+    if (config.mapGetFloat(param.first.c_str(), &param_double))
       param.second->setText(std::to_string(param_double).c_str());
   }
 }
@@ -274,14 +274,12 @@ bool TargetTabWidget::loadTargetPlugin()
   {
     try
     {
-      target_plugins_loader_.reset(
-          new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeTargetBase>("moveit_ros_perception", 
-                                                                  "moveit_handeye_calibration::HandEyeTargetBase"));
+      target_plugins_loader_.reset(new pluginlib::ClassLoader<moveit_handeye_calibration::HandEyeTargetBase>(
+          "moveit_ros_perception", "moveit_handeye_calibration::HandEyeTargetBase"));
     }
     catch (pluginlib::PluginlibException& ex)
     {
-      QMessageBox::warning(this, tr("Exception while creating handeye target plugin loader "),
-                                     tr(ex.what()));
+      QMessageBox::warning(this, tr("Exception while creating handeye target plugin loader "), tr(ex.what()));
       return false;
     }
   }
@@ -445,7 +443,7 @@ void TargetTabWidget::createTargetImageBtnClicked(bool clicked)
     target_->createTargetImage(target_image_);
   }
   else
-    QMessageBox::warning(this, tr("Fail to create a target image."), "No available target plugin.");  
+    QMessageBox::warning(this, tr("Fail to create a target image."), "No available target plugin.");
 
   if (!target_image_.empty())
   {
@@ -463,9 +461,10 @@ void TargetTabWidget::targetParamsSet(const QString& text)
 {
   if (target_)
   {
-    target_->setTargetIntrinsicParams(target_params_["markers_x"]->text().toInt(), target_params_["markers_y"]->text().toInt(),  
-                                      target_params_["marker_size"]->text().toInt(), target_params_["marker_dist"]->text().toInt(), 
-                                      target_params_["marker_border"]->text().toInt(), dictionary_id_->currentText().toStdString());
+    target_->setTargetIntrinsicParams(
+        target_params_["markers_x"]->text().toInt(), target_params_["markers_y"]->text().toInt(),
+        target_params_["marker_size"]->text().toInt(), target_params_["marker_dist"]->text().toInt(),
+        target_params_["marker_border"]->text().toInt(), dictionary_id_->currentText().toStdString());
     target_->setTargetDimension(target_real_dims_["marker_size_real"]->text().toDouble(),
                                 target_real_dims_["marker_dist_real"]->text().toDouble());
   }
@@ -479,10 +478,9 @@ void TargetTabWidget::saveTargetImageBtnClicked(bool clicked)
     return;
   }
 
-  QString fileName = QFileDialog::getSaveFileName(this,
-    tr("Save Target Image"), "",
-    tr("Target Image (*.png);;All Files (*)"));
-  
+  QString fileName =
+      QFileDialog::getSaveFileName(this, tr("Save Target Image"), "", tr("Target Image (*.png);;All Files (*)"));
+
   if (fileName.isEmpty())
     return;
 
@@ -490,7 +488,7 @@ void TargetTabWidget::saveTargetImageBtnClicked(bool clicked)
     fileName += ".png";
 
   QFile file(fileName);
-  if (!file.open(QIODevice::WriteOnly)) 
+  if (!file.open(QIODevice::WriteOnly))
   {
     QMessageBox::warning(this, tr("Unable to open file"), file.errorString());
     return;
@@ -527,9 +525,10 @@ void TargetTabWidget::cameraInfoComboBoxChanged(const QString& topic)
     }
     catch (ros::Exception& e)
     {
-      ROS_ERROR_STREAM_NAMED(LOGNAME, "Subscribe to camera info topic: " << topic.toStdString() << " failed. " << e.what());
+      ROS_ERROR_STREAM_NAMED(LOGNAME, "Subscribe to camera info topic: " << topic.toStdString() << " failed. "
+                                                                         << e.what());
     }
   }
 }
 
-} // namedist moveit_rviz_plugin
+}  // namedist moveit_rviz_plugin
