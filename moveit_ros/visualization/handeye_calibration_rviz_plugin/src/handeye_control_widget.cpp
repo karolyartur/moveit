@@ -810,10 +810,12 @@ void ControlTabWidget::executeFinished()
   auto_execute_btn_->setEnabled(true);
   if (planning_res_)
   {
-    auto_progress_->setValue(auto_progress_->getValue() + 1);
+    auto_progress_->setValue(auto_progress_->getValue() + 1);\
+    ROS_DEBUG_NAMED(LOGNAME, "Waiting 2 seconds for the robot to stop moving");
+    ros::Duration(2.0).sleep();
     if (!frameNamesEmpty())
       takeTranformSamples();
-
+    
     if (effector_wrt_world_.size() == object_wrt_sensor_.size() && effector_wrt_world_.size() > 4)
       solveCameraRobotPose();
   }
