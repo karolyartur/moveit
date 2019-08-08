@@ -32,6 +32,7 @@
 /* Author: Robert Haschke */
 
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <ros/ros.h>
 
 int main(int argc, char** argv)
@@ -42,6 +43,7 @@ int main(int argc, char** argv)
   spinner.start();
 
   moveit::planning_interface::MoveGroupInterface group("manipulator");
+  moveit::planning_interface::PlanningSceneInterface psi("manipulator");
 
   ros::WallDuration(0.1).sleep();
   return 0;

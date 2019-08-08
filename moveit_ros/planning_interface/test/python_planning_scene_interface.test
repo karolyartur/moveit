@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Start joint_state_publisher, robot_state_publisher, and MoveGroup -->
+  <include file="$(find moveit_resources)/fanuc_moveit_config/launch/test_environment.launch"/>
+
+  <!-- Test MoveGroupInterface for Python -->
+  <test pkg="moveit_ros_planning_interface" type="python_planning_scene_interface.py" test-name="python_planning_scene_interface"
+        time-limit="300" args=""/>
+</launch>
