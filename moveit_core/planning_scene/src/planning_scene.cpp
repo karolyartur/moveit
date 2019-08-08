@@ -1385,6 +1385,33 @@ void PlanningScene::removeAllCollisionObjects()
     }
 }
 
+void setCollisions(bool set_to_allow, const std::vector<std::string>& link_group_1,
+                   const std::vector<std::string>& link_group_2)
+{
+  bool allowed_or_disallowed = set_to_allow;
+  // TODO felixvd: Add option to include the child links?
+  for (const auto& b : link_group_1)
+  {
+    if (link_group_2.empty())
+      acm_.setEntry(b, allowed_or_disallowed);
+    else
+      for (const auto& b2 : link_group_2)
+        acm_.setEntry(b, b2, allowed_or_disallowed);
+  }
+}
+
+void setCollisions(bool set_to_allow, const std::string& link_name_1, const std::vector<std::string>& link_group_2)
+{
+  const std::vector<std::string> link_group_1{ link_name_1 };
+  setCollisions(set_to_allow, link_group_1, link_group_2);
+}
+
+void setCollisions(bool set_to_allow, const std::string& link_name_1, const std::string& link_name_2)
+{
+  const std::vector<std::string> link_group_1{ link_name_1 }, link_group_2{ link_name_2 };
+  setCollisions(set_to_allow, link_group_1, link_group_2);
+}
+
 void PlanningScene::processOctomapMsg(const octomap_msgs::OctomapWithPose& map)
 {
   // each octomap replaces any previous one

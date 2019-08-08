@@ -759,6 +759,48 @@ public:
    */
   void removeAllCollisionObjects();
 
+  /** \brief Allow or disallow collisions for a set of links or between two sets. */
+  bool setCollisions(bool set_to_allow, const std::vector<std::string>& link_group_1,
+                     const std::vector<std::string>& link_group_2 = std::vector<std::string>());
+  bool setCollisions(bool set_to_allow, const std::string& link_name_1,
+                     const std::vector<std::string>& link_group_2 = std::vector<std::string>());
+  bool setCollisions(bool set_to_allow, const std::string& link_name_1, const std::string& link_name_2 = "");
+
+  /** \brief Allow or disallow collisions for links or groups of links.
+ * This sets the AllowedCollisionMatrix of the PlanningScene.
+ * If the second argument is empty, the collision behavior is set between the link(s) in the first argument
+ * and all other objects in the world. Supplying both arguments only sets collision behavior between the two.
+ * If two link groups are supplied, the collision behavior is set between all the links of group 1 and all the links of
+ * group 2.
+ *
+ * E.g. allowCollisions("gripper_wrist_link", "table_base_link") allows collisions between
+ * the table and the wrist link of your gripper. You will want to add the other gripper links as well.
+*/
+  bool allowCollisions(const std::string& link_name_1, const std::string& link_name_2 = "")
+  {
+    return setCollisions(true, link_name_1, link_name_2);
+  }
+  bool allowCollisions(const std::vector<std::string>& link_group_1, const std::string& link_name_2 = "")
+  {
+    return setCollisions(true, link_name_2, link_group_1);
+  }
+  bool allowCollisions(const std::vector<std::string>& link_group_1, const std::vector<std::string>& link_group_2)
+  {
+    return setCollisions(true, link_group_1, link_group_2);
+  }
+  bool disallowCollisions(const std::string& link_name_1, const std::string& link_name_2 = "")
+  {
+    return setCollisions(false, link_name_1, link_name_2);
+  }
+  bool disallowCollisions(const std::vector<std::string>& link_group_1, const std::string& link_name_2 = "")
+  {
+    return setCollisions(false, link_name_2, link_group_1);
+  }
+  bool disallowCollisions(const std::vector<std::string>& link_group_1, const std::vector<std::string>& link_group_2)
+  {
+    return setCollisions(false, link_group_1, link_group_2);
+  }
+
   /** \brief Set the current robot state to be \e state. If not
       all joint values are specified, the previously maintained
       joint values are kept. */
