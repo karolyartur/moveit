@@ -32,19 +32,28 @@
 #
 # Author: Karoly Istvan Artur
 
+import rospy
+import copy
+
 class RobotTrajectoryCommander(object):
     '''
     Manipulation of the /moveit_msgs.msg.RobotTrajectory messages
     '''
     def __init__(self, trajectory):
-        self._trajectory = trajectory
-        self._end_time = trajectory.joint_trajectory.header.stamp + trajectory.joint_trajectory.points[-1].time_from_start
+        self._trajectory = copy.deepcopy(trajectory)
+        self._trajectory_duration = self._trajectory.joint_trajectory.points[-1].time_from_start
     
-    def append(self, trajectory):
-        trajectory.joint_trajectory.header.stamp = self._end_time
-        for point in trajectory.joint_trajectory.points:
-            self._trajectory.joint_trajectory.points.append(point)
-        self._end_time += trajectory.joint_trajectory.points[-1].time_from_start
+    def append(self, in_trajectory, wait_time_between_trajectories=rospy.Duration.from_sec(0)):
+        original_index = len(self._trajectory.joint_trajectory.points)
+        original_duration = self._trajectory_duration
+        new_points = copy.deepcopy(in_trajectory.joint_trajectory.points)
+        # Extend trajectory by new points
+        self._trajectory.joint_trajectory.points.extend(new_points)
+        # Increase execution time of points by self._trajectory_duration
+        for point in self._trajectory.joint_trajectory.points[original_index:-1]:
+            point.time_from_start += original_duration + wait_time_between_trajectories
+        
+        self._trajectory_duration = self._trajectory.joint_trajectory.points[-1].time_from_start
 
     def get(self):
         return self._trajectory
