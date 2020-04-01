@@ -110,12 +110,12 @@ bool TrajOptInterface::solve(const planning_scene::PlanningSceneConstPtr& planni
     return false;
   }
 
-  if (not joint_model_group->satisfiesPositionBounds(start_joint_values.data()))
-  {
-    ROS_ERROR_STREAM_NAMED(name_, "Start state violates joint limits");
-    res.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_ROBOT_STATE;
-    return false;
-  }
+  // if (not joint_model_group->satisfiesPositionBounds(start_joint_values.data()))
+  // {
+  //   ROS_ERROR_STREAM_NAMED(name_, "Start state violates joint limits");
+  //   res.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_ROBOT_STATE;
+  //   return false;
+  // }
 
   ROS_INFO(" ======================================= Create ProblemInfo");
   trajopt::ProblemInfo problem_info(planning_scene, req.group_name);
